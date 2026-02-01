@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+DEFAULT_ENDPOINT = "http://127.0.0.1:3000/jsonrpc"
+
+
+def parse_json(raw: str):
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Invalid JSON: {exc}") from exc
+
+
+def rpc_call(endpoint: str, method: str, params):
+    payload = {"jsonrpc": "2.0", "id": 1, "method": method}
+    if params is not None:
+        payload["params"] = params
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        endpoint,
+        data=data,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(f"HTTP error: {exc}") from exc
+    except urllib.error.URLError as exc:
+        raise SystemExit(f"Connection error: {exc}") from exc
+    result = json.loads(body)
+    if "error" in result:
+        raise SystemExit(f"JSON-RPC error: {result['error']}")
+    return result.get("result", result)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Local JSON-RPC CLI for AI World DevApi.")
+    parser.add_argument(
+        "--endpoint",
+        default=os.environ.get("BRP_ENDPOINT", DEFAULT_ENDPOINT),
+        help="JSON-RPC endpoint URL (env: BRP_ENDPOINT).",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    subparsers.add_parser("handshake", help="Call dev.handshake.")
+
+    get_skills = subparsers.add_parser("get-skills", help="Call catalog.get_skills.")
+    get_skills.add_argument("--scope", default="combined")
+    get_skills.add_argument("--id")
+
+    get_active = subparsers.add_parser("get-active", help="Call schedule.get_active.")
+    get_active.add_argument("--world-id", default="default")
+    get_active.add_argument("--include")
+
+    apply_patch = subparsers.add_parser("apply-patch", help="Call schedule.apply_patch.")
+    apply_patch.add_argument("patch_file")
+
+    pause = subparsers.add_parser("pause", help="Call run.pause.")
+    pause.add_argument("--world-id", default="default")
+    pause.add_argument("--reason")
+
+    step = subparsers.add_parser("step", help="Call run.step.")
+    step.add_argument("--world-id", default="default")
+    step.add_argument("pause_token")
+    step.add_argument("--steps", type=int, default=1)
+    step.add_argument("--unit", default="node")
+
+    resume = subparsers.add_parser("resume", help="Call run.resume.")
+    resume.add_argument("--world-id", default="default")
+    resume.add_argument("pause_token")
+
+    raw = subparsers.add_parser("raw", help="Call an arbitrary JSON-RPC method.")
+    raw.add_argument("method")
+    raw.add_argument("--params")
+
+    args = parser.parse_args()
+
+    if args.command == "handshake":
+        result = rpc_call(args.endpoint, "dev.handshake", None)
+    elif args.command == "get-skills":
+        result = rpc_call(
+            args.endpoint,
+            "catalog.get_skills",
+            {"scope": args.scope, "id": args.id},
+        )
+    elif args.command == "get-active":
+        include = parse_json(args.include) if args.include else None
+        result = rpc_call(
+            args.endpoint,
+            "schedule.get_active",
+            {"world_id": args.world_id, "include": include},
+        )
+    elif args.command == "apply-patch":
+        with open(args.patch_file, "r", encoding="utf-8") as handle:
+            patch = json.load(handle)
+        result = rpc_call(args.endpoint, "schedule.apply_patch", {"patch": patch})
+    elif args.command == "pause":
+        result = rpc_call(
+            args.endpoint,
+            "run.pause",
+            {"world_id": args.world_id, "reason": args.reason},
+        )
+    elif args.command == "step":
+        result = rpc_call(
+            args.endpoint,
+            "run.step",
+            {
+                "world_id": args.world_id,
+                "pause_token": args.pause_token,
+                "steps": args.steps,
+                "unit": args.unit,
+            },
+        )
+    elif args.command == "resume":
+        result = rpc_call(
+            args.endpoint,
+            "run.resume",
+            {"world_id": args.world_id, "pause_token": args.pause_token},
+        )
+    elif args.command == "raw":
+        params = parse_json(args.params) if args.params else None
+        result = rpc_call(args.endpoint, args.method, params)
+    else:
+        raise SystemExit("Unknown command")
+
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

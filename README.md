@@ -86,3 +86,16 @@ Run tests with:
 ```bash
 cargo test
 ```
+
+## brpctl CLI
+
+`tools/brpctl` is a local JSON-RPC client for DevApi endpoints. It enables non-MCP,
+command-based invocations for workflows that need local command execution instead of MCP calls.
+
+```bash
+tools/brpctl handshake
+tools/brpctl get-skills --scope combined
+tools/brpctl apply-patch ./patch.json
+```
+
+See `docs/skills/brpctl_skill.md` for the skill sheet and additional examples.
