@@ -12,7 +12,41 @@ export const TERRAIN = {
   rock: { color: 0x7f7f7f, passable: true },
 };
 
-// Task labels for UI display
+// Task types with work time, resources, and labels
+export const TASK_TYPES = {
+  BUILD_HOUSE: {
+    label: "建造房屋",
+    workTime: 5,
+    resources: { wood: 8 }
+  },
+  PLANT_BERRY: {
+    label: "种植浆果",
+    workTime: 2,
+    resources: {}
+  },
+  HARVEST_BERRY: {
+    label: "收获浆果",
+    workTime: 3,
+    resources: {}
+  },
+  MINE_ORE: {
+    label: "开采矿石",
+    workTime: 4,
+    resources: {}
+  },
+  MOVE_ORDER: {
+    label: "移动",
+    workTime: 1,
+    resources: {}
+  },
+  ATTACK: {
+    label: "攻击",
+    workTime: 2,
+    resources: {}
+  }
+};
+
+// Task labels for UI display (legacy, maintained for compatibility)
 export const TASK_LABELS = {
   build_house: "建造房屋",
   plant_berry: "种植浆果",
