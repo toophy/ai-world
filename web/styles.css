@@ -201,3 +201,142 @@ h3 {
   pointer-events: none;
   z-index: 1000;
 }
+
+/* Task Counter Panel */
+.task-counter-panel {
+  top: 78px;
+  left: 10px;
+  width: 200px;
+  max-height: 200px;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.task-counter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.task-counter-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.total-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.task-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-count-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.task-count-item:hover {
+  background: rgba(121, 176, 255, 0.15);
+}
+
+.task-label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.task-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.no-tasks {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 10px;
+}
+
+/* Tooltip styles */
+.task-tooltip {
+  position: absolute;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 8px;
+  min-width: 200px;
+  max-width: 300px;
+  z-index: 2000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.tooltip-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.tooltip-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tooltip-task {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  padding: 3px 4px;
+  border-radius: 3px;
+}
+
+.task-location {
+  color: var(--text-dim);
+}
+
+.task-status {
+  color: var(--ok);
+}
+
+.status-queued {
+  color: var(--text-dim);
+}
+
+.status-assigned {
+  color: var(--accent);
+}
+
+.status-in_progress {
+  color: var(--ok);
+}
+
+.task-assignee {
+  color: var(--ok);
+  font-size: 10px;
+}
+
+.task-unassigned {
+  color: var(--text-dim);
+  font-size: 10px;
+  font-style: italic;
+}
