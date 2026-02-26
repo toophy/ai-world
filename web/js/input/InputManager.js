@@ -3,6 +3,8 @@ import { SelectionHandler } from './SelectionHandler.js';
 import { ModeHandler } from './ModeHandler.js';
 import { BuildingPreview } from '../systems/BuildingPreview.js';
 import { PlacementValidator } from '../systems/PlacementValidator.js';
+import { Building } from '../entities/Building.js';
+import { Task } from '../entities/Task.js';
 import { worldToGrid } from '../utils/geometry.js';
 
 export class InputManager {
@@ -77,6 +79,13 @@ export class InputManager {
     if (e.button === 0) {
       const selectedTiles = this.selectionHandler.onEnd();
       const clickedEntity = this.getClickedEntity(e);
+
+      // Handle building placement in build mode
+      if (this._tryPlaceBuilding()) {
+        // Building was placed, don't process normal interaction
+        return;
+      }
+
       this.modeHandler.handleInteraction(selectedTiles, clickedEntity);
     }
   }
@@ -106,6 +115,102 @@ export class InputManager {
     if (e.key === 'Escape') {
       this.modeHandler.setMode('inspect');
     }
+
+    // R - rotate building preview when in build mode
+    if ((e.key === 'r' || e.key === 'R') && this.buildingPreview) {
+      this.buildingPreview.rotate();
+    }
+  }
+
+  /**
+   * Attempt to place a building when in build mode
+   * @returns {boolean} True if a building was placed, false otherwise
+   */
+  _tryPlaceBuilding() {
+    // Check if we're in build mode with an active preview
+    if (!this.buildingPreview || this.modeHandler.currentMode !== 'build') {
+      return false;
+    }
+
+    // Check if the preview is in a valid position
+    if (!this.buildingPreview.isValid || !this.buildingPreview.currentPosition) {
+      return false;
+    }
+
+    const gridPos = this.buildingPreview.currentPosition;
+    const buildingType = this.buildingPreview.buildingType;
+    const orientation = this.buildingPreview.orientation;
+
+    // Get building config to check resource requirements
+    const config = this.buildingPreview.config;
+    if (!config) {
+      console.warn('Building config not found for type:', buildingType);
+      return false;
+    }
+
+    // Check if we have enough resources
+    const resources = config.resources || {};
+    for (const [resource, amount] of Object.entries(resources)) {
+      if ((this.state.resources[resource] || 0) < amount) {
+        console.warn(`Insufficient ${resource}: need ${amount}, have ${this.state.resources[resource] || 0}`);
+        // TODO: Show UI notification for insufficient resources
+        return false;
+      }
+    }
+
+    // Check if there's already a task at this location
+    if (this.state.taskSystem && this.state.taskSystem.hasTaskAt(gridPos.x, gridPos.z)) {
+      console.warn('Task already exists at this location');
+      return false;
+    }
+
+    // Validate placement one more time to be sure
+    const validationResult = PlacementValidator.validate(
+      gridPos,
+      buildingType,
+      orientation,
+      this.state
+    );
+
+    if (!validationResult.valid) {
+      console.warn('Placement validation failed:', validationResult.reason);
+      return false;
+    }
+
+    // Deduct resources
+    for (const [resource, amount] of Object.entries(resources)) {
+      this.state.resources[resource] = (this.state.resources[resource] || 0) - amount;
+    }
+
+    // Create the Building instance
+    const building = new Building(buildingType, gridPos.x, gridPos.z, orientation);
+    this.state.buildings = this.state.buildings || [];
+    this.state.buildings.push(building);
+
+    // Create a build task for the building
+    const task = new Task(`build_${buildingType}`, gridPos.x, gridPos.z, {
+      priority: this.modeHandler.priorityLevel,
+      buildingType: buildingType,
+      resources: { ...resources },
+    });
+
+    // Link the task to the building
+    task.buildingId = building.id;
+    building.taskId = task.id;
+
+    // Add task to system
+    if (this.state.taskSystem) {
+      this.state.taskSystem.addTask(task);
+    } else {
+      this.state.tasks = this.state.tasks || [];
+      this.state.tasks.push(task);
+    }
+
+    console.log(`Placed ${buildingType} at (${gridPos.x}, ${gridPos.z})`);
+
+    // Don't end the preview - keep it active for multiple placements
+    // This provides better UX for placing multiple buildings of the same type
+    return true;
   }
 
   /**
