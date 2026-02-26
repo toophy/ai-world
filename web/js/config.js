@@ -46,6 +46,11 @@ export const BUILDING_TYPES = {
     label: "墙壁",
     color: 0x8b7355,
     walkable: false,
+    placementRules: {
+      allowedTerrain: ['grass', 'soil', 'sand', 'rock'],
+      requiresRoof: false,
+      minNeighbors: 0,
+    },
   },
   door: {
     width: 1, height: 1,
@@ -54,14 +59,24 @@ export const BUILDING_TYPES = {
     color: 0x6b8e23,
     walkable: true,
     open: false,
+    placementRules: {
+      allowedTerrain: ['grass', 'soil', 'sand', 'rock'],
+      requiresRoof: false,
+      minNeighbors: 0,
+    },
   },
   bed: {
-    width: 1, height: 1,
+    width: 1, height: 2,
     resources: { wood: 8 },
     label: "床铺",
     color: 0xdeb887,
     walkable: false,
     restores: "energy",
+    placementRules: {
+      allowedTerrain: ['grass', 'soil'],
+      requiresRoof: true,
+      minNeighbors: 1,
+    },
   },
   storage: {
     width: 1, height: 1,
@@ -70,6 +85,11 @@ export const BUILDING_TYPES = {
     color: 0x654321,
     walkable: false,
     capacity: 500,
+    placementRules: {
+      allowedTerrain: ['grass', 'soil', 'sand', 'rock'],
+      requiresRoof: false,
+      minNeighbors: 0,
+    },
   },
   workbench: {
     width: 2, height: 1,
@@ -77,6 +97,11 @@ export const BUILDING_TYPES = {
     label: "工作台",
     color: 0xcd853f,
     walkable: false,
+    placementRules: {
+      allowedTerrain: ['grass', 'soil', 'sand', 'rock'],
+      requiresRoof: false,
+      minNeighbors: 0,
+    },
   },
   medical_bed: {
     width: 1, height: 1,
@@ -85,6 +110,11 @@ export const BUILDING_TYPES = {
     color: 0xffe4e1,
     walkable: false,
     restores: "hp",
+    placementRules: {
+      allowedTerrain: ['grass', 'soil'],
+      requiresRoof: true,
+      minNeighbors: 0,
+    },
   },
 };
 
