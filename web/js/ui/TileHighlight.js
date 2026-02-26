@@ -19,16 +19,17 @@ export class TileHighlight {
     const lineWidth = 2;
 
     // Create 4 corner brackets
+    // Fix: swap top-right and bottom-left rotations
     const positions = [
-      { x: -0.5, z: -0.5, rotation: 0 },      // Top-left
-      { x: 0.5, z: -0.5, rotation: Math.PI / 2 },  // Top-right
-      { x: 0.5, z: 0.5, rotation: Math.PI },     // Bottom-right
-      { x: -0.5, z: 0.5, rotation: -Math.PI / 2 }  // Bottom-left
+      { x: -0.5, z: -0.5, rotation: 0 },           // Top-left
+      { x: 0.5, z: -0.5, rotation: Math.PI },       // Top-right (changed from PI/2)
+      { x: 0.5, z: 0.5, rotation: Math.PI / 2 },     // Bottom-right (changed from PI)
+      { x: -0.5, z: 0.5, rotation: -Math.PI / 2 }   // Bottom-left
     ];
 
     positions.forEach(pos => {
       const corner = this.createCorner(cornerSize, cornerColor, lineWidth);
-      corner.position.set(pos.x, 0.1, pos.z);
+      corner.position.set(pos.x, 0.05, pos.z);
       corner.rotation.y = pos.rotation;
       group.add(corner);
     });
@@ -47,12 +48,12 @@ export class TileHighlight {
       depthTest: false,
     });
 
-    // Create L-shaped corner bracket
+    // Create L-shaped corner bracket lying flat on the ground (x-z plane)
     const halfSize = size / 2;
     const points = [
-      new THREE.Vector3(-halfSize, 0, 0),
-      new THREE.Vector3(-halfSize, 0, -halfSize),
-      new THREE.Vector3(0, 0, -halfSize),
+      new THREE.Vector3(-halfSize, 0, -halfSize),  // Start corner
+      new THREE.Vector3(-halfSize, 0, 0),          // Along one edge
+      new THREE.Vector3(0, 0, 0),                  // To center
     ];
 
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
