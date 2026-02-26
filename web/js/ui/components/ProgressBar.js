@@ -31,8 +31,13 @@ export class ProgressBar extends BaseComponent {
   }
 
   render() {
-    const percent = (this.value / this.max) * 100;
     const { variant, size, showLabel, label, animated, className } = this.props;
+    const value = this.value;
+    const max = this.max;
+
+    // Prevent division by zero
+    const safeMax = max > 0 ? max : 100;
+    const percent = Math.max(0, Math.min(100, (value / safeMax) * 100));
 
     const variants = {
       default: 'bg-blue-500',
@@ -62,22 +67,30 @@ export class ProgressBar extends BaseComponent {
       labelHtml = `<span class="text-xs text-game-text-dim min-w-[3rem] text-right">${escapeHtml(labelText)}</span>`;
     }
 
+    // Build ARIA attributes for accessibility
+    const ariaAttrs = `role="progressbar" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="${max}"${label ? ` aria-label="${escapeHtml(label)}"` : ''}`;
+
+    // className should be from trusted source only (component-internal)
     const html = `
-      <div class="flex items-center gap-2 ${className}">
+      <div class="flex items-center gap-2 ${className}" data-component="progress" ${ariaAttrs}>
+        ${labelHtml}
         <div class="flex-1 bg-game-bg-muted rounded-full overflow-hidden ${barHeight}">
           <div class="progress-bar-fill ${barColor} ${animationClass}" style="width: ${percent}%"></div>
         </div>
-        ${labelHtml}
       </div>
     `;
 
     this.container.innerHTML = html;
   }
 
-  // Custom update method for efficient width-only updates
+  // Custom update() for performance - bypasses full re-render
+  // Note: Does not trigger lifecycle hooks (intentional for performance)
   update(newValue) {
     this.value = Math.max(0, Math.min(newValue, this.max));
-    const percent = (this.value / this.max) * 100;
+
+    // Prevent division by zero
+    const safeMax = this.max > 0 ? this.max : 100;
+    const percent = Math.max(0, Math.min(100, (this.value / safeMax) * 100));
 
     const fillElement = this.container.querySelector('.progress-bar-fill');
     if (fillElement) {
