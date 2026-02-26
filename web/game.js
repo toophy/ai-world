@@ -1,16 +1,5 @@
 import * as THREE from "https://unpkg.com/three@0.166.1/build/three.module.js";
-
-const TILE_SIZE = 2;
-const MAP_SIZE = 24;
-const HALF = MAP_SIZE / 2;
-
-const TERRAIN = {
-  grass: { color: 0x4b8f46, passable: true },
-  soil: { color: 0x6d5231, passable: true },
-  sand: { color: 0xb8a166, passable: true },
-  water: { color: 0x2d5b91, passable: false },
-  rock: { color: 0x7f7f7f, passable: true },
-};
+import { TILE_SIZE, MAP_SIZE, HALF, TERRAIN, TASK_LABELS, MODE_TIPS } from "./js/config.js";
 
 const state = {
   gameSpeed: 1,
@@ -302,14 +291,7 @@ function assignTasks() {
 }
 
 function labelTask(type) {
-  return {
-    build_house: "建造房屋",
-    plant_berry: "种植浆果",
-    harvest_berry: "收获浆果",
-    mine_ore: "开采矿石",
-    move_order: "移动",
-    attack: "攻击",
-  }[type] || type;
+  return TASK_LABELS[type] || type;
 }
 
 function finishTask(pawn, task) {
@@ -421,13 +403,8 @@ function drawMinimap() {
   for (let z = 0; z < MAP_SIZE; z++) {
     for (let x = 0; x < MAP_SIZE; x++) {
       const cell = state.map[z][x];
-      const color = {
-        grass: "#4b8f46",
-        soil: "#6d5231",
-        sand: "#b8a166",
-        water: "#2d5b91",
-        rock: "#7f7f7f",
-      }[cell.type];
+      const colorHex = TERRAIN[cell.type].color;
+      const color = "#" + colorHex.toString(16).padStart(6, "0");
       ctx.fillStyle = cell.mountain ? "#4f4f4f" : color;
       ctx.fillRect(x * size, z * size, size, size);
     }
@@ -465,15 +442,7 @@ function renderUI() {
 
   ui.eventLog.innerHTML = state.logs.map((l) => `<div class="log-line">${l}</div>`).join("");
 
-  ui.modeTip.textContent = {
-    inspect: "检视模式：点击任何地块/单位查看信息。",
-    build_house: "房屋耗费木材8；点击可建地块下达建造任务。",
-    plant_berry: "在草地/土壤地块种植浆果。",
-    harvest_berry: "点击浆果灌木下达收获任务。",
-    mine_ore: "点击矿脉下达开采任务。",
-    move_order: "点击地面让最近空闲小人移动。",
-    attack: "点击地面，小人会到达后进行一次徒手攻击。",
-  }[state.selectedMode];
+  ui.modeTip.textContent = MODE_TIPS[state.selectedMode];
 
   drawMinimap();
 }
