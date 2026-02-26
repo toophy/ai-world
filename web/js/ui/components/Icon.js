@@ -26,6 +26,7 @@ const ICON_PATHS = {
   close: 'M18 6L6 18 M6 6l12 12',
   check: 'M20 6L9 17l-5-5',
   alert: 'M12 2L1 21h22L12 2z M12 9v4 M12 17h.01',
+  settings: 'M12 15a3 3 0 100-6 3 3 0 000 6z M12 2a10 10 0 100 20 10 10 0 000-20z M12 6v2 M12 16v2 M6 12h2 M16 12h2',
 
   // 默认图标
   square: 'M4 4h16v16H4z',
