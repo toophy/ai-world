@@ -1,0 +1,195 @@
+:root {
+  color-scheme: dark;
+  --panel-bg: rgba(23, 26, 33, 0.88);
+  --panel-border: rgba(132, 158, 210, 0.42);
+  --text-main: #dde8ff;
+  --text-dim: #b0bfd8;
+  --accent: #79b0ff;
+  --danger: #e86a7c;
+  --ok: #78d17a;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Segoe UI", "PingFang SC", sans-serif;
+}
+
+html,
+body,
+#game-root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0f141f;
+  color: var(--text-main);
+}
+
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  position: absolute;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.top-bar {
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+.resource-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resource {
+  border: 1px solid rgba(121, 176, 255, 0.4);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.clock-group {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button {
+  background: rgba(76, 103, 156, 0.38);
+  border: 1px solid rgba(134, 170, 230, 0.45);
+  color: var(--text-main);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button.active,
+button:hover {
+  background: rgba(109, 153, 236, 0.45);
+}
+
+.left-panel {
+  top: 78px;
+  left: 10px;
+  width: 280px;
+  bottom: 120px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.right-panel {
+  top: 78px;
+  right: 10px;
+  width: 320px;
+  bottom: 120px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+h3 {
+  font-size: 14px;
+  color: #93b7ff;
+  border-bottom: 1px solid rgba(127, 156, 207, 0.28);
+  padding-bottom: 6px;
+  margin: 8px 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.card {
+  border: 1px solid rgba(124, 147, 189, 0.4);
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.inspector {
+  font-size: 13px;
+  color: var(--text-dim);
+  min-height: 96px;
+}
+
+.event-log {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+  min-height: 140px;
+}
+
+.log-line {
+  font-size: 12px;
+  border-left: 2px solid rgba(121, 176, 255, 0.65);
+  padding-left: 6px;
+  color: #d3def1;
+}
+
+.bottom-bar {
+  left: 300px;
+  right: 340px;
+  bottom: 10px;
+  height: 100px;
+  padding: 8px 10px;
+}
+
+.mode-title {
+  font-size: 14px;
+  color: #b4ccff;
+  margin-bottom: 6px;
+}
+
+.button-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #c7d8fa;
+}
+
+.minimap {
+  width: 200px;
+  height: 200px;
+  left: 310px;
+  bottom: 120px;
+  padding: 8px;
+}
+
+#minimap {
+  width: 180px;
+  height: 180px;
+  border: 1px solid rgba(121, 176, 255, 0.35);
+}

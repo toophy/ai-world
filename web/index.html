@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Frontier Colony - RimWorld 风格单场景 Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="game-root">
+      <canvas id="game-canvas"></canvas>
+
+      <header class="top-bar panel">
+        <div class="logo">Frontier Colony</div>
+        <div class="resource-group" id="resource-group"></div>
+        <div class="clock-group">
+          <span id="day-label">第 1 天 06:00</span>
+          <button data-speed="0.5">0.5x</button>
+          <button data-speed="1" class="active">1x</button>
+          <button data-speed="2">2x</button>
+          <button data-speed="3">3x</button>
+        </div>
+      </header>
+
+      <aside class="left-panel panel">
+        <h3>殖民者</h3>
+        <div id="pawn-list" class="list"></div>
+        <h3>任务队列</h3>
+        <div id="task-list" class="list"></div>
+      </aside>
+
+      <aside class="right-panel panel">
+        <h3>检视器</h3>
+        <div id="inspector" class="inspector">点击地图单位查看详情</div>
+        <h3>日志</h3>
+        <div id="event-log" class="event-log"></div>
+      </aside>
+
+      <footer class="bottom-bar panel">
+        <div class="mode-title">建造指令</div>
+        <div class="button-grid">
+          <button data-mode="inspect" class="active">检视</button>
+          <button data-mode="build_house">建造房屋</button>
+          <button data-mode="plant_berry">种植浆果</button>
+          <button data-mode="harvest_berry">收获浆果</button>
+          <button data-mode="mine_ore">开采矿石</button>
+          <button data-mode="move_order">移动指令</button>
+          <button data-mode="attack">徒手攻击</button>
+        </div>
+        <div class="tip" id="mode-tip"></div>
+      </footer>
+
+      <div class="minimap panel">
+        <canvas id="minimap" width="180" height="180"></canvas>
+      </div>
+    </div>
+
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>
