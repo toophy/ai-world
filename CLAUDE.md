@@ -68,6 +68,71 @@ The demo is a console-playable colony simulation with:
 
 The simulation runs in a loop rendering ASCII art of the game world.
 
+### Web UI (web/ directory)
+
+The web-based UI features a modern component architecture built with vanilla JavaScript and styled with Tailwind CSS + DaisyUI.
+
+#### UI Component Architecture
+
+**BaseComponent System**: All UI components extend `BaseComponent` which provides:
+- Lifecycle hooks: `componentWillMount`, `componentDidMount`, `componentWillUpdate`, `componentDidUpdate`, `componentWillUnmount`
+- State management via `setState()` and `shouldUpdate()`
+- Automatic event binding/cleanup via `on()` and `unbindEvents()`
+- Mount/unmount lifecycle for proper resource cleanup
+
+**Component Hierarchy**:
+```
+UIManager
+├── TopBar (header with game controls)
+│   ├── ResourcePanel (resource badges)
+│   ├── Button (pause/speed controls)
+│   └── Time display
+├── BuildPanel (construction & actions)
+│   ├── Button (building types)
+│   ├── Button (action modes)
+│   └── Button (priority levels)
+├── PawnList (colonist cards)
+├── TaskList (task queue with progress)
+├── Inspector (entity details)
+└── EventLog (game events)
+
+Reusable Components:
+├── Button (variant, size, icon, state)
+├── Badge (resource/status indicators)
+├── ProgressBar (health, progress bars)
+└── Icon (SVG icon renderer)
+```
+
+**Key Design Patterns**:
+- **Composition**: Components compose other components (e.g., TopBar contains ResourcePanel and Buttons)
+- **Props-based rendering**: Components render based on props passed from parent
+- **Update optimization**: Components can override `shouldUpdate()` to prevent unnecessary re-renders
+- **Event delegation**: Events bound via `on()` are automatically cleaned up on unmount
+
+**UI Manager**: Centralized UI controller that:
+- Initializes all panels on startup
+- Provides update methods for each panel type (`updatePawns`, `updateTasks`, `showInspector`, etc.)
+- Handles mode changes, speed control, pause state
+- Manages selected entity state and shows notifications
+
+**Styling**: Uses Tailwind CSS with custom game color tokens:
+- `game-bg`, `game-panel` - Dark background colors
+- `game-border`, `game-accent` - Blue-tinted borders
+- `game-text`, `game-text-dim` - Text colors
+- `wood`, `ore`, `berry`, `food` - Resource-specific colors
+
+**File Structure**:
+- `web/index.html` - Main HTML entry point
+- `web/game.js` - Game loop and Three.js rendering
+- `web/styles.css` - Custom CSS overrides
+- `web/js/ui/components/` - Reusable components
+- `web/js/ui/panels/` - Game-specific panels
+- `web/js/ui/UIManager.js` - Central UI controller
+- `web/js/entities/` - Game entity classes
+- `web/js/systems/` - Game systems (TaskSystem, TimeSystem, etc.)
+- `web/js/input/` - Input handling
+- `web/js/utils/` - Utility functions
+
 ## brpctl CLI Tool
 
 `tools/brpctl` is a Python-based JSON-RPC client for DevApi endpoints (when running against a DevApi server):
