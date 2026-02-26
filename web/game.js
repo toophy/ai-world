@@ -370,51 +370,213 @@ function finishTask(pawn, task) {
 
 function updatePawn(pawn, dt) {
   // Update needs using the Pawn class method
-  pawn.updateNeeds(dt * state.gameSpeed);
-
-  // Handle hunger
-  pawn.hunger += dt * 0.8 * state.gameSpeed;
-  if (pawn.hunger > 70 && state.resources.food > 0) {
-    state.resources.food -= 1;
-    pawn.hunger -= 20;
-    logEvent(`${pawn.name} 自动进食`);
+  if (typeof pawn.updateNeeds === 'function') {
+    pawn.updateNeeds(dt * state.gameSpeed);
   }
 
-  // Handle movement
-  if (pawn.targetPath.length > 0) {
-    const next = pawn.targetPath[0];
-    const wp = gridToWorld(next.x, next.z);
-    const dir = wp.clone().sub(pawn.mesh.position);
-    dir.y = 0;
-    const dist = dir.length();
-    if (dist < 0.05) {
-      pawn.mesh.position.set(wp.x, 0.8, wp.z);
-      pawn.pos.x = next.x;
-      pawn.pos.z = next.z;
-      pawn.targetPath.shift();
-    } else {
-      dir.normalize();
-      pawn.mesh.position.addScaledVector(dir, pawn.speed * dt * state.gameSpeed);
+  // Handle hunger (legacy compatibility)
+  if (typeof pawn.hunger !== 'undefined') {
+    pawn.hunger += dt * 0.8 * state.gameSpeed;
+    if (pawn.hunger > 70 && state.resources.food > 0) {
+      state.resources.food -= 1;
+      pawn.hunger -= 20;
+      logEvent(`${pawn.name} 自动进食`);
     }
-    return;
   }
 
-  // Handle work - check both task (old) and currentTask (new) for compatibility
+  // Check both task (old) and currentTask (new) for compatibility
   const currentTask = pawn.currentTask || pawn.task;
+
+  // If working on a task
   if (currentTask) {
-    pawn.workTimer += dt * state.gameSpeed;
-    const workTime = pawn.getWorkTime ? pawn.getWorkTime(currentTask.type) : 1.4;
-    if (pawn.workTimer >= workTime) {
-      finishTask(pawn, currentTask);
+    // Move to task location if not there
+    if (pawn.targetPath && pawn.targetPath.length > 0) {
+      movePawnAlongPath(pawn, dt * state.gameSpeed);
+      return;
+    }
+
+    // Check if at task location
+    if (pawn.pos.x === currentTask.x && pawn.pos.z === currentTask.z) {
+      currentTask.status = 'in_progress';
+
+      // Get work time modified by skill
+      let workTime = TASK_TYPES[currentTask.type.toUpperCase()]?.workTime || 1;
+      if (typeof pawn.getSkillModifier === 'function') {
+        workTime = workTime / pawn.getSkillModifier(currentTask.type);
+      }
+
+      pawn.workTimer = (pawn.workTimer || 0) + dt * state.gameSpeed;
+
+      // Update task progress
+      if (typeof currentTask.setProgress === 'function') {
+        currentTask.setProgress(Math.min(100, (pawn.workTimer / workTime) * 100));
+      } else {
+        currentTask.progress = Math.min(100, (pawn.workTimer / workTime) * 100);
+      }
+
+      // Task complete
+      if (pawn.workTimer >= workTime) {
+        completeTask(pawn, currentTask);
+      }
+    } else {
+      // Not at task location, need to move there
+      const path = findPath(pawn.pos, { x: currentTask.x, z: currentTask.z });
+      if (path.length > 1) {
+        pawn.targetPath = path.slice(1);
+      }
     }
   } else {
-    // Auto-dispatch: find mature berry bushes
-    const mature = state.berryBushes.find((b) => b.berryCount > 0);
-    if (mature && !state.taskSystem.hasTaskAt(mature.x, mature.z)) {
-      const task = new Task("harvest_berry", mature.x, mature.z, { priority: 9 });
-      state.taskSystem.addTask(task);
+    // Auto-dispatch: find mature berry bushes (if TaskSystem is available)
+    if (state.taskSystem && typeof state.taskSystem.hasTaskAt === 'function') {
+      const mature = state.berryBushes.find((b) => b.berryCount > 0);
+      if (mature && !state.taskSystem.hasTaskAt(mature.x, mature.z)) {
+        const task = new Task("harvest_berry", mature.x, mature.z, { priority: 9 });
+        state.taskSystem.addTask(task);
+      }
     }
   }
+}
+
+/**
+ * Move a pawn along their target path
+ */
+function movePawnAlongPath(pawn, dt) {
+  if (!pawn.targetPath || pawn.targetPath.length === 0) return;
+
+  const target = pawn.targetPath[0];
+  const dx = target.x - pawn.pos.x;
+  const dz = target.z - pawn.pos.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
+  const moveDist = pawn.speed * dt;
+
+  if (dist <= moveDist) {
+    // Reached this waypoint
+    pawn.pos.x = target.x;
+    pawn.pos.z = target.z;
+    pawn.targetPath.shift();
+  } else {
+    // Move towards waypoint
+    pawn.pos.x += (dx / dist) * moveDist;
+    pawn.pos.z += (dz / dist) * moveDist;
+  }
+
+  // Update mesh position
+  if (pawn.mesh) {
+    const worldPos = gridToWorld(pawn.pos.x, pawn.pos.z);
+    pawn.mesh.position.set(worldPos.x, 0.8, worldPos.z);
+  }
+}
+
+/**
+ * Complete a task and apply its effects
+ */
+function completeTask(pawn, task) {
+  // Mark task as completed
+  if (typeof task.markCompleted === 'function') {
+    task.markCompleted();
+  } else {
+    task.status = 'completed';
+    task.completedAt = Date.now();
+  }
+
+  // Apply task effects
+  switch (task.type) {
+    case 'mine_ore':
+      state.resources.ore = (state.resources.ore || 0) + 10;
+      // Remove ore if depleted
+      const ore = state.ores.find((o) => o.x === task.x && o.z === task.z);
+      if (ore) {
+        ore.amount -= 10;
+        if (ore.amount <= 0) {
+          world.remove(ore.mesh);
+          state.ores = state.ores.filter((o) => o.id !== ore.id);
+          logEvent("矿脉已枯竭");
+        }
+      }
+      logEvent(`${pawn.name} 开采矿石 +10`);
+      break;
+
+    case 'harvest_berry':
+      const bush = state.berryBushes?.find(b => b.x === task.x && b.z === task.z);
+      if (bush && bush.berryCount > 0) {
+        const picked = Math.min(3, bush.berryCount);
+        bush.berryCount -= picked;
+        state.resources.berry = (state.resources.berry || 0) + picked;
+        state.resources.food = (state.resources.food || 0) + picked;
+        if (bush.mesh) {
+          bush.mesh.material.color.setHex(bush.berryCount > 0 ? 0x4ea43f : 0x5c6f56);
+        }
+        logEvent(`${pawn.name} 收获浆果 +${picked}`);
+      }
+      break;
+
+    case 'build_wall':
+    case 'build_door':
+    case 'build_bed':
+    case 'build_storage':
+    case 'build_workbench':
+    case 'build_house':
+      if (typeof Building !== 'undefined') {
+        const buildingType = task.buildingType || task.type.replace('build_', '');
+        // For build_house, use 'house' type
+        const actualType = buildingType === 'house' ? 'house' : buildingType;
+        if (actualType === 'house') {
+          addHouse(task.x, task.z);
+          logEvent(`${pawn.name} 完成房屋建造`);
+        } else {
+          const building = new Building(actualType, task.x, task.z);
+          state.buildings = state.buildings || [];
+          state.buildings.push(building);
+          // Mark map cell as occupied
+          if (BUILDING_TYPES[actualType] && !BUILDING_TYPES[actualType].walkable) {
+            state.map[task.z][task.x].occupied = true;
+          }
+          logEvent(`${pawn.name} 完成建造: ${BUILDING_TYPES[actualType]?.label || actualType}`);
+        }
+      }
+      break;
+
+    case 'plant_berry':
+      addBerryBush(task.x, task.z, false);
+      logEvent(`${pawn.name} 种下了浆果幼苗`);
+      break;
+
+    case 'move_order':
+      logEvent(`${pawn.name} 到达目的地`);
+      break;
+
+    case 'attack':
+      const target = state.pawns.find((p) => p.id !== pawn.id);
+      if (target) {
+        target.hp = Math.max(0, target.hp - 8);
+        logEvent(`${pawn.name} 徒手攻击 ${target.name} (-8HP)`);
+      }
+      break;
+
+    default:
+      logEvent(`${pawn.name} 完成: ${task.label || task.type}`);
+      break;
+  }
+
+  // Update pawn
+  if (typeof pawn.addHistoryEntry === 'function') {
+    pawn.addHistoryEntry(`完成: ${task.label || task.type}`);
+  }
+  if (typeof pawn.gainExperience === 'function') {
+    pawn.gainExperience(task.type);
+  }
+
+  // Clear pawn task references
+  if (pawn.task === task) {
+    pawn.task = null;
+  }
+  if (pawn.currentTask === task) {
+    pawn.currentTask = null;
+  }
+  pawn.workTimer = 0;
+
+  console.log(`${pawn.name} completed: ${task.label || task.type}`);
 }
 
 function growPlants(dt) {
