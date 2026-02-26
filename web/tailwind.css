@@ -1,5 +1,5 @@
-/* Load DaisyUI which includes Tailwind */
-@import url('https://cdn.jsdelivr.net/npm/daisyui@5.5.5/dist/full.min.css');
+/* Load DaisyUI which includes Tailwind (使用国内 BootCDN 加速) */
+@import url('https://cdn.bootcdn.net/ajax/libs/daisyui/5.5.5/full.min.css');
 
 /* Custom theme extensions via CSS variables */
 :root {

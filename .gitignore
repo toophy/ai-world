@@ -31,3 +31,4 @@ web/test-building-preview.html
 
 # Worktree directory for isolated development
 .worktrees/
+node_modules/
