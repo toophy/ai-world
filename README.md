@@ -99,3 +99,19 @@ tools/brpctl apply-patch ./patch.json
 ```
 
 See `docs/skills/brpctl_skill.md` for the skill sheet and additional examples.
+
+## RimWorld 风格单场景演示
+
+仓库中新增了一个纯前端单场景原型：`game/index.html`。
+
+功能包括：
+- 丰富控制台 UI（资源、任务、殖民者状态、日志）
+- 自动化任务派发（按优先级分配空闲小人）
+- 小人自主移动并采集浆果
+
+本地运行：
+
+```bash
+python3 -m http.server 4173
+# 浏览器打开 http://localhost:4173/game/index.html
+```
