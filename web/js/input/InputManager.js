@@ -6,7 +6,6 @@ import { PlacementValidator } from '../systems/PlacementValidator.js';
 import { Building } from '../entities/Building.js';
 import { Task } from '../entities/Task.js';
 import { worldToGrid } from '../utils/geometry.js';
-import { GameCursor } from '../ui/GameCursor.js';
 
 export class InputManager {
   constructor(canvas, camera, raycaster, groundPlane, state, taskSystem, pathSystem, uiManager, scene) {
@@ -29,9 +28,6 @@ export class InputManager {
 
     // Building preview system
     this.buildingPreview = null;
-
-    // Game cursor system
-    this.gameCursor = new GameCursor(scene);
 
     // Store handler references for cleanup
     this._boundHandlers = {
@@ -79,14 +75,6 @@ export class InputManager {
 
   _handlePointerMove(e) {
     this.selectionHandler.onMove({ x: e.clientX, y: e.clientY });
-
-    // Update game cursor position
-    if (this.gameCursor) {
-      const worldPos = this._getWorldPosition(e);
-      if (worldPos) {
-        this.gameCursor.updatePosition(worldPos);
-      }
-    }
 
     // Handle building preview update
     if (this.buildingPreview) {
@@ -383,26 +371,6 @@ export class InputManager {
 
   setMode(mode, buildingType = null) {
     this.modeHandler.setMode(mode, buildingType);
-
-    // Update game cursor based on mode
-    if (this.gameCursor) {
-      let cursorType = 'inspect';
-
-      switch (mode) {
-        case 'build':
-          cursorType = 'build';
-          break;
-        case 'demolish':
-          cursorType = 'demolish';
-          break;
-        case 'inspect':
-        default:
-          cursorType = 'inspect';
-          break;
-      }
-
-      this.gameCursor.setCursor(cursorType);
-    }
   }
 
   toggleFollowMode() {

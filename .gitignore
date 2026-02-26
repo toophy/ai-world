@@ -25,3 +25,6 @@ test-*.png
 web/test-imports.html
 *.png
 web/test-*.html
+web/debug-*.html
+web/final-debug.html
+web/test-building-preview.html

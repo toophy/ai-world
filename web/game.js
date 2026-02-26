@@ -11,7 +11,6 @@ import { TaskMarker } from "./js/systems/TaskMarker.js";
 import { UIManager } from "./js/ui/UIManager.js";
 import { InputManager } from "./js/input/InputManager.js";
 import { BuildingRenderer } from "./js/systems/BuildingRenderer.js";
-import { GameCursor } from "./js/ui/GameCursor.js";
 import { TileHighlight } from "./js/ui/TileHighlight.js";
 import { EntityHighlight } from "./js/ui/EntityHighlight.js";
 
@@ -923,7 +922,6 @@ function initSystems() {
   state.inputManager = new InputManager(canvas, camera, raycaster, groundPlane, state, state.taskSystem, pathSystem, state.uiManager, scene);
 
   // Initialize UI components
-  state.gameCursor = new GameCursor(scene);
   state.tileHighlight = new TileHighlight(scene);
   state.entityHighlight = new EntityHighlight(scene);
 
