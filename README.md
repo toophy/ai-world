@@ -100,6 +100,24 @@ tools/brpctl apply-patch ./patch.json
 
 See `docs/skills/brpctl_skill.md` for the skill sheet and additional examples.
 
+## Web Demo: RimWorld-like 单场景原型（Three.js）
+
+新增了一个前端原型 `web/`，包含：
+
+- 2 个可自主移动小人（自动任务派发/执行）
+- 1 种植物（浆果灌木，支持种植、生长、收获）
+- 5 种基础地形（草地、土壤、沙地、水域、岩地）
+- 山脉与 1 种矿物（矿脉，可开采）
+- 房屋手动建造
+- 徒手攻击、移动、建造、种植、收获、采矿等任务
+- 接近 RimWorld 风格的完整 HUD（资源栏、殖民者面板、任务面板、检视器、日志、迷你地图、速度控制）
+
+本地启动方式：
+
+```bash
+cd web
+python3 -m http.server 4173
+# 浏览器打开 http://localhost:4173
 ## RimWorld 风格单场景演示
 
 仓库中新增了一个纯前端单场景原型：`game/index.html`。
