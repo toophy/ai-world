@@ -12,38 +12,20 @@ export const TERRAIN = {
   rock: { color: 0x7f7f7f, passable: true },
 };
 
-// Task types with work time, resources, and labels
+// Task types with work time, resources, yield, and labels
 export const TASK_TYPES = {
-  BUILD_HOUSE: {
-    label: "建造房屋",
-    workTime: 5,
-    resources: { wood: 8 }
-  },
-  PLANT_BERRY: {
-    label: "种植浆果",
-    workTime: 2,
-    resources: {}
-  },
-  HARVEST_BERRY: {
-    label: "收获浆果",
-    workTime: 3,
-    resources: {}
-  },
-  MINE_ORE: {
-    label: "开采矿石",
-    workTime: 4,
-    resources: {}
-  },
-  MOVE_ORDER: {
-    label: "移动",
-    workTime: 1,
-    resources: {}
-  },
-  ATTACK: {
-    label: "攻击",
-    workTime: 2,
-    resources: {}
-  }
+  BUILD_WALL: { workTime: 2, resources: { wood: 3 }, label: "建造墙壁" },
+  BUILD_DOOR: { workTime: 3, resources: { wood: 5 }, label: "建造门" },
+  BUILD_BED: { workTime: 2.5, resources: { wood: 8 }, label: "建造床铺" },
+  BUILD_STORAGE: { workTime: 3, resources: { wood: 12 }, label: "建造储物箱" },
+  BUILD_WORKBENCH: { workTime: 5, resources: { wood: 20, ore: 5 }, label: "建造工作台" },
+  MINE_ORE: { workTime: 1.5, yield: { ore: 10 }, label: "开采矿石" },
+  HARVEST_BERRY: { workTime: 1, yield: { berry: 3 }, label: "收获浆果" },
+  PLANT_BERRY: { workTime: 0.8, resources: {}, label: "种植浆果" },
+  HAUL: { workTime: 0.5, label: "搬运" },
+  SLEEP: { workTime: 0, label: "休息" },
+  EAT: { workTime: 0.5, label: "进食" },
+  HEAL: { workTime: 1, label: "治疗" },
 };
 
 // Task labels for UI display (legacy, maintained for compatibility)
