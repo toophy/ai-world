@@ -14,25 +14,43 @@ export class TileHighlight {
 
   createCornerHighlight() {
     const group = new THREE.Group();
-    const cornerSize = 0.3;
-    const cornerColor = 0x00ff00; // Green for selected
-    const lineWidth = 2;
 
-    // Create 4 corner brackets
-    // Fix: swap top-right and bottom-left rotations
-    const positions = [
-      { x: -0.5, z: -0.5, rotation: 0 },           // Top-left
-      { x: 0.5, z: -0.5, rotation: Math.PI },       // Top-right (changed from PI/2)
-      { x: 0.5, z: 0.5, rotation: Math.PI / 2 },     // Bottom-right (changed from PI)
-      { x: -0.5, z: 0.5, rotation: -Math.PI / 2 }   // Bottom-left
+    // Create a simple rectangle outline for the tile
+    const size = 1; // TILE_SIZE is 1 unit
+    const height = 0.1; // Slightly above ground
+
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.5, -0.5);
+    shape.lineTo(0.5, -0.5);
+    shape.lineTo(0.5, 0.5);
+    shape.lineTo(-0.5, 0.5);
+    shape.lineTo(-0.5, -0.5);
+
+    const geometry = new THREE.EdgesGeometry(
+      new THREE.PlaneGeometry(size, size),
+      15 // threshold angle
+    );
+
+    // We want just the outline, so use LineSegments
+    const points = [
+      new THREE.Vector3(-0.5, 0, -0.5),
+      new THREE.Vector3(0.5, 0, -0.5),
+      new THREE.Vector3(0.5, 0, 0.5),
+      new THREE.Vector3(-0.5, 0, 0.5),
+      new THREE.Vector3(-0.5, 0, -0.5),
     ];
 
-    positions.forEach(pos => {
-      const corner = this.createCorner(cornerSize, cornerColor, lineWidth);
-      corner.position.set(pos.x, 0.05, pos.z);
-      corner.rotation.y = pos.rotation;
-      group.add(corner);
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: 0x00ff00, // Green for selected
+      transparent: true,
+      opacity: 0.8,
+      depthTest: false,
     });
+
+    const line = new THREE.Line(lineGeometry, material);
+    line.position.y = 0.05;
+    group.add(line);
 
     this.scene.add(group);
     this.highlightMesh = group;
@@ -40,27 +58,8 @@ export class TileHighlight {
   }
 
   createCorner(size, color, lineWidth) {
-    const group = new THREE.Group();
-    const material = new THREE.LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.9,
-      depthTest: false,
-    });
-
-    // Create L-shaped corner bracket lying flat on the ground (x-z plane)
-    const halfSize = size / 2;
-    const points = [
-      new THREE.Vector3(-halfSize, 0, -halfSize),  // Start corner
-      new THREE.Vector3(-halfSize, 0, 0),          // Along one edge
-      new THREE.Vector3(0, 0, 0),                  // To center
-    ];
-
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(geometry, material);
-    group.add(line);
-
-    return group;
+    // This method is no longer used, keeping for backwards compatibility
+    return new THREE.Group();
   }
 
   /**
