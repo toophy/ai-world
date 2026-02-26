@@ -98,3 +98,12 @@ export const MODE_TIPS = {
   move_order: "点击地面让最近空闲小人移动。",
   attack: "点击地面，小人会到达后进行一次徒手攻击。",
 };
+
+// Skill labels for UI display
+export const SKILL_LABELS = {
+  building: "建造",
+  mining: "采矿",
+  planting: "种植",
+  hauling: "搬运",
+  medicine: "医疗",
+};

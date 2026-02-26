@@ -340,3 +340,294 @@ h3 {
   font-size: 10px;
   font-style: italic;
 }
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  backdrop-filter: blur(2px);
+}
+
+/* Modal content */
+.modal-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 500px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.modal-close:hover {
+  color: var(--text-main);
+}
+
+/* Colonist detail specific */
+.colonist-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.colonist-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--panel-border);
+}
+
+.colonist-info h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  color: var(--text-main);
+}
+
+.colonist-status {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+/* Tabs */
+.colonist-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 8px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover {
+  background: rgba(121, 176, 255, 0.1);
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  background: rgba(121, 176, 255, 0.2);
+  color: var(--accent);
+}
+
+/* Tab content */
+.colonist-tab-content {
+  min-height: 300px;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane[data-tab="status"] {
+  display: block;
+}
+
+/* Stat bars */
+.stat-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-bar label {
+  width: 60px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.bar-container {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.bar-fill.hp { background: var(--danger); }
+.bar-fill.hunger { background: #d4a574; }
+.bar-fill.energy { background: #9b59b6; }
+
+.stat-value {
+  width: 60px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Desires */
+.desires-section h3 {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0 0 8px 0;
+}
+
+.desire-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(121, 176, 255, 0.2);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--accent);
+  margin-right: 6px;
+}
+
+.no-desires {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Skills */
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skill-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skill-name {
+  width: 60px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.skill-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.skill-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.skill-level {
+  width: 40px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+/* History */
+.task-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.history-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.history-time {
+  color: var(--text-dim);
+}
+
+.history-action {
+  color: var(--text-main);
+}
+
+.no-history {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 20px;
+}
+
+/* Actions */
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.action-btn {
+  padding: 10px 16px;
+  background: rgba(76, 103, 156, 0.4);
+  border: 1px solid rgba(134, 170, 230, 0.5);
+  border-radius: 6px;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-btn:hover {
+  background: rgba(109, 153, 236, 0.5);
+}
+
+.action-btn.danger {
+  background: rgba(232, 106, 124, 0.3);
+  border-color: rgba(232, 106, 124, 0.5);
+}
+
+.action-btn.danger:hover {
+  background: rgba(232, 106, 124, 0.5);
+}
+
+.assign-panel {
+  padding: 12px;
+  background: rgba(121, 176, 255, 0.1);
+  border-radius: 6px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
