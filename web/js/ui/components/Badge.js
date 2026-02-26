@@ -1,6 +1,19 @@
 import { BaseComponent } from './BaseComponent.js';
 
 /**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(unsafe) {
+  if (typeof unsafe !== 'string') return unsafe;
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
  * Badge - 徽章组件
  * 用于显示资源数量、状态标签等
  */
@@ -34,12 +47,15 @@ export class Badge extends BaseComponent {
       lg: 'px-4 py-2 text-base gap-2.5',
     };
 
-    const classes = `${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`.trim();
+    // Fallback for invalid variant/size
+    const variantClass = variants[variant] || variants.default;
+    const sizeClass = sizes[size] || sizes.md;
+    const classes = `${baseClasses} ${variantClass} ${sizeClass} ${className}`.trim();
 
-    // 构建内容
-    const iconHtml = icon ? `<span class="opacity-70 pointer-events-none">${icon}</span>` : '';
-    const labelHtml = label ? `<span class="text-game-text-dim pointer-events-none">${label}</span>` : '';
-    const valueHtml = value !== undefined ? `<span class="font-bold pointer-events-none">${value}</span>` : '';
+    // 构建内容 - 逃逸所有动态值以防止XSS
+    const iconHtml = icon ? `<span class="opacity-70 pointer-events-none">${escapeHtml(icon)}</span>` : '';
+    const labelHtml = label ? `<span class="text-game-text-dim pointer-events-none">${escapeHtml(label)}</span>` : '';
+    const valueHtml = value !== undefined ? `<span class="font-bold pointer-events-none">${escapeHtml(String(value))}</span>` : '';
 
     return `<div class="${classes}" data-component="badge">${iconHtml}${labelHtml}${valueHtml}</div>`;
   }
