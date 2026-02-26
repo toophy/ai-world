@@ -13,6 +13,11 @@ const OUTLINE_COLOR = 0x00ff00; // Green for construction
 // Red indicates destruction/destruction-in-progress (universal warning color)
 const DEMOLISH_OUTLINE_COLOR = 0xff0000; // Red for demolition
 
+// Flash effect constants
+const FLASH_DURATION = 150; // ms
+const FLASH_EMISSIVE_COLOR_CONSTRUCTION = new THREE.Color(0xffff00); // Yellow for construction
+const FLASH_EMISSIVE_COLOR_DEMOLITION = new THREE.Color(0xff4444); // Red for demolition
+
 /**
  * BuildingRenderer - Handles visualization of buildings with construction progress
  *
@@ -33,6 +38,7 @@ export class BuildingRenderer {
     this.scene = scene;
     this.buildings = buildings;
     this.buildingMeshes = new Map(); // building.id -> { mesh, outline }
+    this.activeFlashes = new Map(); // building.id -> { endTime: number, originalEmissive: Color }
   }
 
   /**
@@ -42,6 +48,67 @@ export class BuildingRenderer {
    */
   calculateOpacity(progress) {
     return MIN_OPACITY + (progress / CONSTRUCTION_COMPLETE_PROGRESS) * OPACITY_RANGE;
+  }
+
+  /**
+   * Trigger a flash effect on a building
+   * @param {string} buildingId - The ID of the building to flash
+   * @param {boolean} isDemolition - True if this is a demolition completion flash
+   */
+  flashBuilding(buildingId, isDemolition = false) {
+    const meshes = this.buildingMeshes.get(buildingId);
+    if (!meshes) return;
+
+    const { mesh } = meshes;
+    const flashColor = isDemolition ? FLASH_EMISSIVE_COLOR_DEMOLITION : FLASH_EMISSIVE_COLOR_CONSTRUCTION;
+
+    // Store original emissive if not already flashing
+    if (!this.activeFlashes.has(buildingId)) {
+      this.activeFlashes.set(buildingId, {
+        endTime: Date.now() + FLASH_DURATION,
+        originalEmissive: mesh.material.emissive ? mesh.material.emissive.clone() : new THREE.Color(0x000000),
+        flashColor: flashColor
+      });
+
+      // Apply flash
+      mesh.material.emissive = flashColor.clone();
+      mesh.material.emissiveIntensity = 1.0;
+    }
+  }
+
+  /**
+   * Update flash effects (call this every frame)
+   */
+  updateFlashes() {
+    const now = Date.now();
+    const expiredFlashes = [];
+
+    for (const [buildingId, flash] of this.activeFlashes) {
+      if (now >= flash.endTime) {
+        // Flash expired, restore original
+        const meshes = this.buildingMeshes.get(buildingId);
+        if (meshes && meshes.mesh) {
+          meshes.mesh.material.emissive = flash.originalEmissive;
+          meshes.mesh.material.emissiveIntensity = 0;
+        }
+        expiredFlashes.push(buildingId);
+      } else {
+        // Fade out the flash over time
+        const elapsed = now - (flash.endTime - FLASH_DURATION);
+        const progress = elapsed / FLASH_DURATION;
+        const intensity = 1 - progress;
+
+        const meshes = this.buildingMeshes.get(buildingId);
+        if (meshes && meshes.mesh) {
+          meshes.mesh.material.emissiveIntensity = intensity;
+        }
+      }
+    }
+
+    // Remove expired flashes
+    for (const buildingId of expiredFlashes) {
+      this.activeFlashes.delete(buildingId);
+    }
   }
 
   /**
@@ -156,6 +223,7 @@ export class BuildingRenderer {
 
     this._disposeMeshes(meshes);
     this.buildingMeshes.delete(building.id);
+    this.activeFlashes.delete(building.id);
 
     if (building.mesh === meshes.mesh) {
       building.mesh = null;
@@ -206,6 +274,8 @@ export class BuildingRenderer {
     for (const building of this.buildings) {
       this.updateBuilding(building);
     }
+    // Update flash effects
+    this.updateFlashes();
   }
 
   /**
@@ -244,5 +314,6 @@ export class BuildingRenderer {
     }
 
     this.buildingMeshes.clear();
+    this.activeFlashes.clear();
   }
 }

@@ -548,6 +548,10 @@ function completeTask(pawn, task) {
           building.isComplete = true;
           const buildingLabel = BUILDING_TYPES[building.type]?.label || building.type;
           logEvent(`${pawn.name} 完成建造: ${buildingLabel}`);
+          // Trigger flash effect for construction completion
+          if (state.buildingRenderer) {
+            state.buildingRenderer.flashBuilding(building.id, false);
+          }
         }
       } else {
         // Fallback for legacy buildings without buildingId
@@ -567,6 +571,10 @@ function completeTask(pawn, task) {
             state.map[task.z][task.x].occupied = true;
           }
           logEvent(`${pawn.name} 完成建造: ${BUILDING_TYPES[actualType]?.label || actualType}`);
+          // Trigger flash effect for construction completion
+          if (state.buildingRenderer) {
+            state.buildingRenderer.flashBuilding(building.id, false);
+          }
         }
       }
       break;
@@ -583,6 +591,11 @@ function completeTask(pawn, task) {
         if (buildingIndex !== undefined && buildingIndex >= 0) {
           const building = state.buildings[buildingIndex];
           const buildingLabel = BUILDING_TYPES[building.type]?.label || building.type;
+
+          // Trigger flash effect for demolition completion before removing
+          if (state.buildingRenderer) {
+            state.buildingRenderer.flashBuilding(building.id, true);
+          }
 
           // Remove from renderer
           if (state.buildingRenderer) {
