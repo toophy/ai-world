@@ -121,4 +121,13 @@ export class TaskCounterPanel {
     const pawn = this.taskSystem.state?.pawns?.find(p => p.id === pawnId);
     return pawn?.name || '未知';
   }
+
+  /**
+   * Clean up the component when no longer needed
+   * Note: render() rebuilds innerHTML which automatically removes old DOM elements and their listeners
+   */
+  destroy() {
+    this.hideTooltip();
+    this.element = null;
+  }
 }
