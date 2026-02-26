@@ -114,6 +114,22 @@ export class BuildingPreview {
     this.outlineMesh.rotation.y = angle;
   }
 
+  /**
+   * Helper method to dispose of a mesh and its resources
+   * @param {THREE.Mesh|THREE.LineSegments} mesh - The mesh to dispose
+   */
+  disposeMesh(mesh) {
+    if (mesh) {
+      this.scene.remove(mesh);
+      if (mesh.geometry) {
+        mesh.geometry.dispose();
+      }
+      if (mesh.material) {
+        mesh.material.dispose();
+      }
+    }
+  }
+
   rotate() {
     // Increment orientation (wrap around 0-3)
     this.orientation = (this.orientation + 1) % 4;
@@ -122,20 +138,11 @@ export class BuildingPreview {
     const previousPosition = this.currentPosition;
     const previousIsValid = this.isValid;
 
-    // Remove old meshes from scene
-    if (this.previewMesh) {
-      this.scene.remove(this.previewMesh);
-      this.previewMesh.geometry.dispose();
-      this.previewMesh.material.dispose();
-      this.previewMesh = null;
-    }
-
-    if (this.outlineMesh) {
-      this.scene.remove(this.outlineMesh);
-      this.outlineMesh.geometry.dispose();
-      this.outlineMesh.material.dispose();
-      this.outlineMesh = null;
-    }
+    // Remove old meshes from scene and dispose
+    this.disposeMesh(this.previewMesh);
+    this.disposeMesh(this.outlineMesh);
+    this.previewMesh = null;
+    this.outlineMesh = null;
 
     // Recreate meshes with new dimensions
     this.createMeshes();
@@ -149,7 +156,22 @@ export class BuildingPreview {
     }
   }
 
+  /**
+   * Clean up all Three.js resources and reset state
+   * Called when canceling build mode or after placing a building
+   */
   destroy() {
-    // TODO: will be implemented in Task 8
+    // Remove meshes from scene and dispose of geometry/materials
+    this.disposeMesh(this.previewMesh);
+    this.disposeMesh(this.outlineMesh);
+
+    // Clear mesh references
+    this.previewMesh = null;
+    this.outlineMesh = null;
+
+    // Reset state properties
+    this.orientation = 0;
+    this.currentPosition = null;
+    this.isValid = false;
   }
 }
