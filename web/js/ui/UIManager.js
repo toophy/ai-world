@@ -1,7 +1,10 @@
 import { TopBar } from './panels/TopBar.js';
 import { BuildPanel } from './panels/BuildPanel.js';
 import { ResourcePanel } from './panels/ResourcePanel.js';
-// 其他面板将在后续任务中添加
+import { PawnList } from './panels/PawnList.js';
+import { TaskList } from './panels/TaskList.js';
+import { Inspector } from './panels/Inspector.js';
+import { EventLog } from './panels/EventLog.js';
 
 /**
  * UIManager - UI组件管理器
@@ -50,6 +53,43 @@ export class UIManager {
     topBar.mount(this.root);
     this.panels.set('topBar', topBar);
 
+    // 资源面板
+    const resourcePanel = new ResourcePanel({
+      resources: this.state.resources || [],
+    });
+    resourcePanel.mount(this.root);
+    this.panels.set('resourcePanel', resourcePanel);
+
+    // 殖民者列表
+    const pawnList = new PawnList({
+      pawns: this.state.pawns || [],
+      selectedPawn: this.selectedPawn,
+      onPawnClick: (pawn) => this.setSelectedPawn(pawn),
+    });
+    pawnList.mount(this.root);
+    this.panels.set('pawnList', pawnList);
+
+    // 任务列表
+    const taskList = new TaskList({
+      tasks: this.state.tasks || [],
+    });
+    taskList.mount(this.root);
+    this.panels.set('taskList', taskList);
+
+    // 检视器
+    const inspector = new Inspector({
+      entity: this.selectedPawn || null,
+    });
+    inspector.mount(this.root);
+    this.panels.set('inspector', inspector);
+
+    // 事件日志
+    const eventLog = new EventLog({
+      logs: this.state.logs || [],
+    });
+    eventLog.mount(this.root);
+    this.panels.set('eventLog', eventLog);
+
     // 建造面板
     const buildPanel = new BuildPanel({
       priority: 5,
@@ -71,6 +111,63 @@ export class UIManager {
         state: this.state,
         timeString: this.getTimeString(),
         day: this.state.day,
+      });
+    }
+
+    // 更新资源面板
+    const resourcePanel = this.panels.get('resourcePanel');
+    if (resourcePanel && this.state.resources) {
+      resourcePanel.update({
+        resources: this.state.resources,
+      });
+    }
+  }
+
+  /**
+   * 更新殖民者列表
+   */
+  updatePawns(pawns) {
+    const pawnList = this.panels.get('pawnList');
+    if (pawnList) {
+      pawnList.update({
+        pawns: pawns || this.state.pawns || [],
+        selectedPawn: this.selectedPawn,
+      });
+    }
+  }
+
+  /**
+   * 更新任务列表
+   */
+  updateTasks(tasks) {
+    const taskList = this.panels.get('taskList');
+    if (taskList) {
+      taskList.update({
+        tasks: tasks || this.state.tasks || [],
+      });
+    }
+  }
+
+  /**
+   * 显示检视器
+   */
+  showInspector(entity) {
+    const inspector = this.panels.get('inspector');
+    if (inspector) {
+      inspector.update({
+        entity: entity || null,
+      });
+    }
+  }
+
+  /**
+   * 显示事件日志
+   */
+  showEventLog(logs) {
+    const eventLog = this.panels.get('eventLog');
+    if (eventLog) {
+      eventLog.update({
+        logs: logs || this.state.logs || [],
       });
     }
   }
@@ -152,7 +249,18 @@ export class UIManager {
    */
   setSelectedPawn(pawn) {
     this.selectedPawn = pawn;
-    // TODO: 实现PawnList的更新
+
+    // 更新殖民者列表
+    const pawnList = this.panels.get('pawnList');
+    if (pawnList) {
+      pawnList.update({
+        pawns: this.state.pawns || [],
+        selectedPawn: pawn,
+      });
+    }
+
+    // 更新检视器
+    this.showInspector(pawn);
   }
 
   /**
