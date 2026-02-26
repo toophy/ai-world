@@ -148,23 +148,13 @@ export class InputManager {
       return false;
     }
 
-    // Check if we have enough resources
+    // Check resources and deduct if sufficient
     const resources = config.resources || {};
-    for (const [resource, amount] of Object.entries(resources)) {
-      if ((this.state.resources[resource] || 0) < amount) {
-        console.warn(`Insufficient ${resource}: need ${amount}, have ${this.state.resources[resource] || 0}`);
-        // TODO: Show UI notification for insufficient resources
-        return false;
-      }
-    }
-
-    // Check if there's already a task at this location
-    if (this.state.taskSystem && this.state.taskSystem.hasTaskAt(gridPos.x, gridPos.z)) {
-      console.warn('Task already exists at this location');
+    if (!this._checkAndDeductResources(resources)) {
       return false;
     }
 
-    // Validate placement one more time to be sure
+    // Validate placement (PlacementValidator already checks task overlap)
     const validationResult = PlacementValidator.validate(
       gridPos,
       buildingType,
@@ -174,13 +164,14 @@ export class InputManager {
 
     if (!validationResult.valid) {
       console.warn('Placement validation failed:', validationResult.reason);
+      // TODO: Implement transaction/rollback mechanism to revert resource deduction
+      // when placement fails after resource check. For now, resources remain deducted.
       return false;
     }
 
-    // Deduct resources
-    for (const [resource, amount] of Object.entries(resources)) {
-      this.state.resources[resource] = (this.state.resources[resource] || 0) - amount;
-    }
+    // TODO: Consider implementing a transactional system where resources are only
+    // committed after all validation passes. This would prevent resource loss if
+    // later steps fail (e.g., building creation or task assignment errors).
 
     // Create the Building instance
     const building = new Building(buildingType, gridPos.x, gridPos.z, orientation);
@@ -210,6 +201,30 @@ export class InputManager {
 
     // Don't end the preview - keep it active for multiple placements
     // This provides better UX for placing multiple buildings of the same type
+    return true;
+  }
+
+  /**
+   * Check if required resources are available and deduct them if so
+   * @param {Object} resources - Object mapping resource names to required amounts
+   * @returns {boolean} True if resources were sufficient and deducted, false otherwise
+   * @private
+   */
+  _checkAndDeductResources(resources) {
+    // First pass: check all resources
+    for (const [resource, amount] of Object.entries(resources)) {
+      if ((this.state.resources[resource] || 0) < amount) {
+        console.warn(`Insufficient ${resource}: need ${amount}, have ${this.state.resources[resource] || 0}`);
+        // TODO: Show UI notification for insufficient resources
+        return false;
+      }
+    }
+
+    // Second pass: deduct resources (only if all checks passed)
+    for (const [resource, amount] of Object.entries(resources)) {
+      this.state.resources[resource] = (this.state.resources[resource] || 0) - amount;
+    }
+
     return true;
   }
 
