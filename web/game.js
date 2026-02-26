@@ -1,6 +1,7 @@
 import * as THREE from "https://unpkg.com/three@0.166.1/build/three.module.js";
 import { TILE_SIZE, MAP_SIZE, HALF, TERRAIN, TASK_LABELS, MODE_TIPS } from "./js/config.js";
 import { gridToWorld, worldToGrid, inBounds } from "./js/utils/geometry.js";
+import { Pawn } from "./js/entities/Pawn.js";
 
 const state = {
   gameSpeed: 1,
@@ -177,18 +178,8 @@ function addPawn(name, x, z, color) {
   );
   mesh.castShadow = true;
   mesh.position.set(pos.x, 0.8, pos.z);
-  const pawn = {
-    id: crypto.randomUUID(),
-    name,
-    hp: 100,
-    hunger: 0,
-    pos: { x, z },
-    mesh,
-    speed: 2.8,
-    targetPath: [],
-    task: null,
-    workTimer: 0,
-  };
+  const pawn = new Pawn(name, x, z, color);
+  pawn.mesh = mesh;
   mesh.userData = { kind: "pawn", entity: pawn };
   state.pawns.push(pawn);
   world.add(mesh);
