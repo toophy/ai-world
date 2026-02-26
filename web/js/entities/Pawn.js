@@ -50,6 +50,7 @@ export class Pawn {
       harvest_berry: 'planting',
       haul: 'hauling',
       heal: 'medicine',
+      demolish: 'building',
     };
     const skillName = skillMap[taskType];
     if (!skillName) return 1;
@@ -113,6 +114,7 @@ export class Pawn {
       harvest_berry: 'planting',
       haul: 'hauling',
       heal: 'medicine',
+      demolish: 'building',
     };
     const skill = skillMap[taskType];
     if (skill && this.skills[skill] < 20) {

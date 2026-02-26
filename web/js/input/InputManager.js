@@ -329,7 +329,20 @@ export class InputManager {
       return this.state.pawns.find(p => p.mesh === mesh);
     }
 
-    // TODO: Check other entities (ores, berry bushes, buildings)
+    // Check buildings
+    if (this.state.buildingRenderer) {
+      const buildingMeshes = [];
+      for (const [id, meshes] of this.state.buildingRenderer.buildingMeshes) {
+        buildingMeshes.push(meshes.mesh);
+      }
+      const buildingIntersects = this.raycaster.intersectObjects(buildingMeshes);
+      if (buildingIntersects.length > 0) {
+        const mesh = buildingIntersects[0].object;
+        return this.state.buildings.find(b => b.mesh === mesh);
+      }
+    }
+
+    // TODO: Check other entities (ores, berry bushes)
 
     return null;
   }

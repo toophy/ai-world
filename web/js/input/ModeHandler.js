@@ -60,6 +60,9 @@ export class ModeHandler {
       case "harvest":
         this.createHarvestTasks(clickedEntity || selectedTiles);
         break;
+      case "demolish":
+        this.createDemolishTasks(clickedEntity || selectedTiles);
+        break;
       case "cancel":
         selectedTiles.forEach(tile => this.taskSystem.cancelTasksAt(tile.x, tile.z));
         break;
@@ -143,6 +146,35 @@ export class ModeHandler {
           priority: this.priorityLevel,
         });
         this.taskSystem.addTask(task);
+      }
+    }
+  }
+
+  createDemolishTasks(target) {
+    if (Array.isArray(target)) {
+      for (const tile of target) {
+        const building = this.state.buildings?.find(b => b.x === tile.x && b.z === tile.z);
+        if (building && building.state !== 'demolishing' && !this.taskSystem.hasTaskAt(tile.x, tile.z)) {
+          const task = new Task('demolish', tile.x, tile.z, {
+            priority: this.priorityLevel,
+            buildingId: building.id,
+          });
+          this.taskSystem.addTask(task);
+          // Mark building as demolishing
+          building.state = 'demolishing';
+        }
+      }
+    } else if (target && target.id) {
+      // Single building clicked
+      const building = this.state.buildings?.find(b => b.id === target.id);
+      if (building && building.state !== 'demolishing' && !this.taskSystem.hasTaskAt(building.x, building.z)) {
+        const task = new Task('demolish', building.x, building.z, {
+          priority: this.priorityLevel,
+          buildingId: building.id,
+        });
+        this.taskSystem.addTask(task);
+        // Mark building as demolishing
+        building.state = 'demolishing';
       }
     }
   }

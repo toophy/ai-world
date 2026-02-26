@@ -10,6 +10,7 @@ const CONSTRUCTION_COMPLETE_PROGRESS = 100;
 const FULL_OPACITY = 1.0;
 const MESH_HEIGHT = 0.5;
 const OUTLINE_COLOR = 0x00ff00; // Green for construction
+const DEMOLISH_OUTLINE_COLOR = 0xff0000; // Red for demolition
 
 /**
  * BuildingRenderer - Handles visualization of buildings with construction progress
@@ -92,8 +93,10 @@ export class BuildingRenderer {
 
     // Create outline using edges
     const edges = new THREE.EdgesGeometry(geometry);
+    // Use red outline for demolishing buildings
+    const outlineColor = building.state === 'demolishing' ? DEMOLISH_OUTLINE_COLOR : OUTLINE_COLOR;
     const lineMaterial = new THREE.LineBasicMaterial({
-      color: OUTLINE_COLOR,
+      color: outlineColor,
       transparent: true,
       opacity: OUTLINE_OPACITY,
     });
@@ -168,16 +171,27 @@ export class BuildingRenderer {
 
     const { mesh, outline } = meshes;
     const isComplete = building.progress >= CONSTRUCTION_COMPLETE_PROGRESS || building.isComplete;
+    const isDemolishing = building.state === 'demolishing';
 
-    // Update opacity based on progress (only if not complete)
-    if (!isComplete) {
+    // Update opacity based on progress (show demolition progress too)
+    if (isDemolishing) {
+      // For demolition, opacity decreases as progress goes from 100 to 0
+      mesh.material.opacity = this.calculateOpacity(building.progress);
+    } else if (!isComplete) {
       mesh.material.opacity = this.calculateOpacity(building.progress);
     } else {
       mesh.material.opacity = FULL_OPACITY;
     }
 
-    // Show/hide outline based on completion
-    outline.visible = !isComplete;
+    // Show outline during construction or demolition
+    outline.visible = !isComplete || isDemolishing;
+
+    // Update outline color for demolishing buildings
+    if (isDemolishing) {
+      outline.material.color.setHex(DEMOLISH_OUTLINE_COLOR);
+    } else {
+      outline.material.color.setHex(OUTLINE_COLOR);
+    }
   }
 
   /**

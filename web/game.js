@@ -424,7 +424,15 @@ function updatePawn(pawn, dt) {
       if (currentTask.buildingId) {
         const building = state.buildings?.find(b => b.id === currentTask.buildingId);
         if (building) {
-          building.updateProgress((pawn.workTimer / workTime) * 100);
+          if (currentTask.type === 'demolish') {
+            // For demolition, progress decreases from 100 to 0
+            const demolishProgress = (pawn.workTimer / workTime) * 100;
+            building.updateProgress(-demolishProgress);
+            // Update task progress for UI
+            currentTask.progress = Math.min(100, demolishProgress);
+          } else {
+            building.updateProgress((pawn.workTimer / workTime) * 100);
+          }
         }
       }
 
@@ -566,6 +574,32 @@ function completeTask(pawn, task) {
     case 'plant_berry':
       addBerryBush(task.x, task.z, false);
       logEvent(`${pawn.name} 种下了浆果幼苗`);
+      break;
+
+    case 'demolish':
+      // Find and remove the building
+      if (task.buildingId) {
+        const buildingIndex = state.buildings?.findIndex(b => b.id === task.buildingId);
+        if (buildingIndex !== undefined && buildingIndex >= 0) {
+          const building = state.buildings[buildingIndex];
+          const buildingLabel = BUILDING_TYPES[building.type]?.label || building.type;
+
+          // Remove from renderer
+          if (state.buildingRenderer) {
+            state.buildingRenderer.removeBuilding(building);
+          }
+
+          // Remove from state
+          state.buildings.splice(buildingIndex, 1);
+
+          // Free up the tile
+          if (state.map[task.z] && state.map[task.z][task.x]) {
+            state.map[task.z][task.x].occupied = false;
+          }
+
+          logEvent(`${pawn.name} 完成拆除: ${buildingLabel}`);
+        }
+      }
       break;
 
     case 'move_order':

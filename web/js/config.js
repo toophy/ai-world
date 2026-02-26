@@ -26,6 +26,7 @@ export const TASK_TYPES = {
   SLEEP: { workTime: 0, label: "休息" },
   EAT: { workTime: 0.5, label: "进食" },
   HEAL: { workTime: 1, label: "治疗" },
+  DEMOLISH: { workTime: 2, label: "拆除" },
 };
 
 // Task labels for UI display (legacy, maintained for compatibility)
@@ -139,6 +140,7 @@ export const MODE_TIPS = {
   mine_ore: "点击矿脉下达开采任务。",
   move_order: "点击地面让最近空闲小人移动。",
   attack: "点击地面，小人会到达后进行一次徒手攻击。",
+  demolish: "点击建筑物下达拆除任务，建筑会被逐步拆除。",
 };
 
 // Skill labels for UI display
