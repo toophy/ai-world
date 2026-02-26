@@ -193,3 +193,11 @@ h3 {
   height: 180px;
   border: 1px solid rgba(121, 176, 255, 0.35);
 }
+
+.selection-box {
+  position: absolute;
+  border: 2px dashed rgba(121, 176, 255, 0.7);
+  background: rgba(121, 176, 255, 0.1);
+  pointer-events: none;
+  z-index: 1000;
+}
