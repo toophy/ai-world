@@ -57,21 +57,21 @@ export class ColonistDetailModal {
           <div class="stat-bar">
             <label>生命值</label>
             <div class="bar-container">
-              <div class="bar-fill hp" style="width: ${(this.pawn.hp / this.pawn.maxHp) * 100}%"></div>
+              <div class="bar-fill hp" style="width: ${(this.pawn.maxHp > 0 ? (this.pawn.hp / this.pawn.maxHp) * 100 : 0)}%"></div>
             </div>
             <span class="stat-value">${this.pawn.hp}/${this.pawn.maxHp}</span>
           </div>
           <div class="stat-bar">
             <label>饥饿值</label>
             <div class="bar-container">
-              <div class="bar-fill hunger" style="width: ${(this.pawn.hunger / this.pawn.maxHunger) * 100}%"></div>
+              <div class="bar-fill hunger" style="width: ${(this.pawn.maxHunger > 0 ? (this.pawn.hunger / this.pawn.maxHunger) * 100 : 0)}%"></div>
             </div>
             <span class="stat-value">${this.pawn.hunger}/${this.pawn.maxHunger}</span>
           </div>
           <div class="stat-bar">
             <label>精力值</label>
             <div class="bar-container">
-              <div class="bar-fill energy" style="width: ${(this.pawn.energy / this.pawn.maxEnergy) * 100}%"></div>
+              <div class="bar-fill energy" style="width: ${(this.pawn.maxEnergy > 0 ? (this.pawn.energy / this.pawn.maxEnergy) * 100 : 0)}%"></div>
             </div>
             <span class="stat-value">${this.pawn.energy}/${this.pawn.maxEnergy}</span>
           </div>
@@ -92,7 +92,7 @@ export class ColonistDetailModal {
         <div class="skills-list">
           ${Object.entries(this.pawn.skills).map(([skill, level]) => `
             <div class="skill-item">
-              <span class="skill-name">${SKILL_LABELS[skill]}</span>
+              <span class="skill-name">${SKILL_LABELS[skill] || skill}</span>
               <div class="skill-bar">
                 <div class="skill-fill" style="width: ${Math.min(100, level * 5)}%"></div>
               </div>
@@ -199,7 +199,7 @@ export class ColonistDetailModal {
         this.enterAssignMode('haul');
         break;
       case 'cancel-current':
-        if (this.pawn.task) {
+        if (this.pawn.task && typeof this.pawn.task.cancel === 'function') {
           this.pawn.task.cancel();
           this.pawn.task = null;
           this.pawn.targetPath = [];
