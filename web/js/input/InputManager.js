@@ -118,8 +118,8 @@ export class InputManager {
       this.modeHandler.setPriority(parseInt(e.key) * 3);
     }
 
-    // Escape - cancel current mode
-    if (e.key === 'Escape') {
+    // Escape - cancel build mode
+    if (e.key === 'Escape' && this.modeHandler?.currentMode === 'build') {
       this.modeHandler.setMode('inspect');
     }
 
