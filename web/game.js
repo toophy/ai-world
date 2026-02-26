@@ -1,5 +1,6 @@
 import * as THREE from "https://unpkg.com/three@0.166.1/build/three.module.js";
 import { TILE_SIZE, MAP_SIZE, HALF, TERRAIN, TASK_LABELS, MODE_TIPS } from "./js/config.js";
+import { gridToWorld, worldToGrid, inBounds } from "./js/utils/geometry.js";
 
 const state = {
   gameSpeed: 1,
@@ -81,21 +82,6 @@ function makeMap() {
       };
     }
   }
-}
-
-function gridToWorld(x, z) {
-  return new THREE.Vector3((x - HALF) * TILE_SIZE + TILE_SIZE * 0.5, 0, (z - HALF) * TILE_SIZE + TILE_SIZE * 0.5);
-}
-
-function worldToGrid(v) {
-  return {
-    x: Math.floor(v.x / TILE_SIZE + HALF),
-    z: Math.floor(v.z / TILE_SIZE + HALF),
-  };
-}
-
-function inBounds(x, z) {
-  return x >= 0 && x < MAP_SIZE && z >= 0 && z < MAP_SIZE;
 }
 
 function isPassable(x, z) {
