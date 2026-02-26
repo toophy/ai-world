@@ -1,14 +1,16 @@
-import { worldToGrid } from '../utils/geometry.js';
+import { worldToGrid, isValidGrid } from '../utils/geometry.js';
 
 export class SelectionHandler {
   constructor(camera, raycaster, groundPlane) {
+    if (!camera || !raycaster || !groundPlane) {
+      throw new Error('SelectionHandler requires camera, raycaster, and groundPlane');
+    }
     this.camera = camera;
     this.raycaster = raycaster;
     this.groundPlane = groundPlane;
     this.isSelecting = false;
     this.selectionStart = null;
     this.selectionEnd = null;
-    this.selectedEntities = [];
     this.selectionBoxElement = null;
   }
 
@@ -35,13 +37,6 @@ export class SelectionHandler {
     if (this.selectionBoxElement) return;
     const box = document.createElement('div');
     box.className = 'selection-box';
-    box.style.cssText = `
-      position: absolute;
-      border: 2px dashed rgba(121, 176, 255, 0.7);
-      background: rgba(121, 176, 255, 0.1);
-      pointer-events: none;
-      z-index: 1000;
-    `;
     document.body.appendChild(box);
     this.selectionBoxElement = box;
   }
@@ -98,10 +93,11 @@ export class SelectionHandler {
       }
     }
 
-    return tiles;
+    return tiles.filter(tile => isValidGrid(tile.x, tile.z));
   }
 
   screenToWorld(screenX, screenY) {
+    // Convert to normalized device coordinates (-1 to +1)
     this.raycaster.setFromCamera(
       new THREE.Vector2(
         (screenX / window.innerWidth) * 2 - 1,
@@ -120,5 +116,11 @@ export class SelectionHandler {
     const worldPos = this.screenToWorld(screenX, screenY);
     if (!worldPos) return null;
     return worldToGrid(worldPos.x, worldPos.z);
+  }
+
+  dispose() {
+    this.hideSelectionBox();
+    this.selectionStart = null;
+    this.selectionEnd = null;
   }
 }
