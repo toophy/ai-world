@@ -116,7 +116,7 @@ button:hover {
 
 .right-panel {
   top: 78px;
-  right: 10px;
+  right: 310px;
   width: 320px;
   bottom: 120px;
   padding: 12px;
@@ -732,3 +732,92 @@ h3 {
 .desire-icon {
   font-size: 12px;
 }
+
+/* Build Mode Panel */
+.build-mode-panel {
+  top: 78px;
+  right: 10px;
+  width: 280px;
+  max-height: calc(100vh - 200px);
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.build-mode-panel h3 {
+  font-size: 13px;
+  color: var(--accent);
+  margin: 8px 0 6px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(121, 176, 255, 0.2);
+}
+
+.build-mode-panel .button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.build-btn, .build-mode-panel .action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: rgba(76, 103, 156, 0.3);
+  border: 1px solid rgba(134, 170, 230, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.build-btn:hover, .build-mode-panel .action-btn:hover {
+  background: rgba(109, 153, 236, 0.4);
+  border-color: var(--accent);
+}
+
+.build-btn.active {
+  background: rgba(121, 176, 255, 0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(121, 176, 255, 0.4);
+}
+
+.build-icon, .action-icon {
+  font-size: 20px;
+}
+
+.build-label, .action-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.priority-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.priority-btn {
+  flex: 1;
+  padding: 8px;
+  background: rgba(76, 103, 156, 0.3);
+  border: 1px solid rgba(134, 170, 230, 0.4);
+  border-radius: 6px;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 12px;
+}
+
+.priority-btn:hover {
+  background: rgba(109, 153, 236, 0.4);
+}
+
+.priority-btn.active {
+  background: rgba(121, 176, 255, 0.4);
+  border-color: var(--accent);
+}
+
+.priority-btn.low.active { border-color: #4ea43f; color: #4ea43f; }
+.priority-btn.medium.active { border-color: #ffa500; color: #ffa500; }
+.priority-btn.high.active { border-color: #e86a7c; color: #e86a7c; }

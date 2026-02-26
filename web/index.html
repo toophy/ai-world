@@ -40,6 +40,59 @@
         <div id="event-log" class="event-log"></div>
       </aside>
 
+      <div class="panel build-mode-panel">
+        <h3>建造</h3>
+        <div class="button-grid">
+          <button class="build-btn" data-building="wall" data-mode="build">
+            <span class="build-icon">🧱</span>
+            <span class="build-label">墙壁</span>
+          </button>
+          <button class="build-btn" data-building="door" data-mode="build">
+            <span class="build-icon">🚪</span>
+            <span class="build-label">门</span>
+          </button>
+          <button class="build-btn" data-building="bed" data-mode="build">
+            <span class="build-icon">🛏️</span>
+            <span class="build-label">床铺</span>
+          </button>
+          <button class="build-btn" data-building="storage" data-mode="build">
+            <span class="build-icon">📦</span>
+            <span class="build-label">储物箱</span>
+          </button>
+          <button class="build-btn" data-building="workbench" data-mode="build">
+            <span class="build-icon">🔧</span>
+            <span class="build-label">工作台</span>
+          </button>
+          <button class="build-btn" data-building="medical_bed" data-mode="build">
+            <span class="build-icon">🏥</span>
+            <span class="build-label">医务床</span>
+          </button>
+        </div>
+
+        <h3>资源</h3>
+        <div class="button-grid">
+          <button class="action-btn" data-mode="mine">
+            <span class="action-icon">⛏️</span>
+            <span class="action-label">采矿</span>
+          </button>
+          <button class="action-btn" data-mode="harvest">
+            <span class="action-icon">🫐</span>
+            <span class="action-label">收获</span>
+          </button>
+          <button class="action-btn" data-mode="plant">
+            <span class="action-icon">🌱</span>
+            <span class="action-label">种植</span>
+          </button>
+        </div>
+
+        <h3>优先级</h3>
+        <div class="priority-selector">
+          <button class="priority-btn low" data-priority="3">低</button>
+          <button class="priority-btn medium active" data-priority="5">中</button>
+          <button class="priority-btn high" data-priority="9">高</button>
+        </div>
+      </div>
+
       <footer class="bottom-bar panel">
         <div class="mode-title">建造指令</div>
         <div class="button-grid">
