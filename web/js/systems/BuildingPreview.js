@@ -115,7 +115,38 @@ export class BuildingPreview {
   }
 
   rotate() {
-    // TODO: will be implemented in Task 7
+    // Increment orientation (wrap around 0-3)
+    this.orientation = (this.orientation + 1) % 4;
+
+    // Store current position to restore later
+    const previousPosition = this.currentPosition;
+    const previousIsValid = this.isValid;
+
+    // Remove old meshes from scene
+    if (this.previewMesh) {
+      this.scene.remove(this.previewMesh);
+      this.previewMesh.geometry.dispose();
+      this.previewMesh.material.dispose();
+      this.previewMesh = null;
+    }
+
+    if (this.outlineMesh) {
+      this.scene.remove(this.outlineMesh);
+      this.outlineMesh.geometry.dispose();
+      this.outlineMesh.material.dispose();
+      this.outlineMesh = null;
+    }
+
+    // Recreate meshes with new dimensions
+    this.createMeshes();
+
+    // Apply rotation to the new meshes
+    this.applyRotation();
+
+    // Restore position if there was one
+    if (previousPosition) {
+      this.updatePosition(previousPosition, previousIsValid);
+    }
   }
 
   destroy() {
