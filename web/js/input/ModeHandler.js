@@ -3,19 +3,34 @@ import { BUILDING_TYPES } from '../config.js';
 import { isValidGrid } from '../utils/geometry.js';
 
 export class ModeHandler {
-  constructor(state, taskSystem, pathSystem) {
+  constructor(state, taskSystem, pathSystem, inputManager = null) {
     this.state = state;
     this.taskSystem = taskSystem;
     this.pathSystem = pathSystem;
+    this.inputManager = inputManager;
     this.currentMode = "inspect";
     this.selectedBuildingType = null;
     this.priorityLevel = 5;
   }
 
   setMode(mode, buildingType = null) {
+    // End building preview when exiting build mode or switching building types
+    if (this.currentMode === "build" && (mode !== "build" || buildingType !== this.selectedBuildingType)) {
+      if (this.inputManager && typeof this.inputManager.endBuildingPreview === 'function') {
+        this.inputManager.endBuildingPreview();
+      }
+    }
+
     this.currentMode = mode;
     this.selectedBuildingType = buildingType;
     console.log(`Mode: ${mode}`, buildingType ? `(${buildingType})` : '');
+
+    // Start building preview when entering build mode with a building type
+    if (mode === "build" && buildingType && this.inputManager) {
+      if (typeof this.inputManager.startBuildingPreview === 'function') {
+        this.inputManager.startBuildingPreview(buildingType);
+      }
+    }
   }
 
   setPriority(level) {

@@ -21,7 +21,8 @@ export class InputManager {
     this.scene = scene;
 
     this.selectionHandler = new SelectionHandler(camera, raycaster, groundPlane);
-    this.modeHandler = new ModeHandler(state, taskSystem, pathSystem);
+    // Pass inputManager reference to ModeHandler so it can control building preview
+    this.modeHandler = new ModeHandler(state, taskSystem, pathSystem, this);
 
     // Building preview system
     this.buildingPreview = null;
