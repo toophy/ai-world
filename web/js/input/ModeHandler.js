@@ -2,6 +2,9 @@ import { Task } from '../entities/Task.js';
 import { BUILDING_TYPES } from '../config.js';
 import { isValidGrid } from '../utils/geometry.js';
 
+/** @constant {string} Mode identifier for building placement */
+const BUILD_MODE = 'build';
+
 export class ModeHandler {
   constructor(state, taskSystem, pathSystem, inputManager = null) {
     this.state = state;
@@ -13,10 +16,17 @@ export class ModeHandler {
     this.priorityLevel = 5;
   }
 
+  /**
+   * Sets the current interaction mode and optional building type for build mode.
+   * Manages building preview lifecycle when entering/exiting build mode.
+   *
+   * @param {string} mode - The interaction mode ('build', 'inspect', 'mine', 'harvest', 'cancel')
+   * @param {string|null} buildingType - Optional building type key when mode is 'build'
+   */
   setMode(mode, buildingType = null) {
     // End building preview when exiting build mode or switching building types
-    if (this.currentMode === "build" && (mode !== "build" || buildingType !== this.selectedBuildingType)) {
-      if (this.inputManager && typeof this.inputManager.endBuildingPreview === 'function') {
+    if (this.currentMode === BUILD_MODE && (mode !== BUILD_MODE || buildingType !== this.selectedBuildingType)) {
+      if (this.inputManager) {
         this.inputManager.endBuildingPreview();
       }
     }
@@ -26,10 +36,8 @@ export class ModeHandler {
     console.log(`Mode: ${mode}`, buildingType ? `(${buildingType})` : '');
 
     // Start building preview when entering build mode with a building type
-    if (mode === "build" && buildingType && this.inputManager) {
-      if (typeof this.inputManager.startBuildingPreview === 'function') {
-        this.inputManager.startBuildingPreview(buildingType);
-      }
+    if (mode === BUILD_MODE && buildingType && this.inputManager) {
+      this.inputManager.startBuildingPreview(buildingType);
     }
   }
 
@@ -43,7 +51,7 @@ export class ModeHandler {
       case "inspect":
         // Handled by UI
         break;
-      case "build":
+      case BUILD_MODE:
         this.createBuildTasks(selectedTiles);
         break;
       case "mine":
