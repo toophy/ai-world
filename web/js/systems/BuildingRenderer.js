@@ -10,6 +10,7 @@ const CONSTRUCTION_COMPLETE_PROGRESS = 100;
 const FULL_OPACITY = 1.0;
 const MESH_HEIGHT = 0.5;
 const OUTLINE_COLOR = 0x00ff00; // Green for construction
+// Red indicates destruction/destruction-in-progress (universal warning color)
 const DEMOLISH_OUTLINE_COLOR = 0xff0000; // Red for demolition
 
 /**

@@ -29,6 +29,24 @@ export class TaskSystem {
         if (idx !== -1) tasksAtKey.splice(idx, 1);
         if (tasksAtKey.length === 0) this.taskMap.delete(key);
       }
+      // Clean up building state if this was a demolish task
+      if (task.type === 'demolish' && task.buildingId) {
+        const building = this.state.buildings?.find(b => b.id === task.buildingId);
+        if (building && building.state === 'demolishing') {
+          // Check if there are any other demolish tasks for this building
+          const hasOtherDemolishTasks = this.tasks.some(t =>
+            t.id !== taskId &&
+            t.type === 'demolish' &&
+            t.buildingId === task.buildingId &&
+            t.status !== 'cancelled' &&
+            t.status !== 'completed'
+          );
+          if (!hasOtherDemolishTasks) {
+            // Reset building state if no other demolish tasks exist
+            building.state = building.isComplete ? 'complete' : 'constructing';
+          }
+        }
+      }
       this.tasks.splice(index, 1);
     }
   }

@@ -106,6 +106,8 @@ export class ModeHandler {
     console.log(`Created ${created} build tasks`);
   }
 
+  // TODO (code_quality): Refactor to reduce duplication between createMineTasks, createHarvestTasks, and createDemolishTasks
+  // They all follow the same pattern: if (Array.isArray(target)) / else if with similar task creation logic
   createMineTasks(target) {
     if (Array.isArray(target)) {
       // Box selection - find ore in selected tiles
