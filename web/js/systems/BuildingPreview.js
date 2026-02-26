@@ -54,7 +54,30 @@ export class BuildingPreview {
   }
 
   updatePosition(gridPos, isValid) {
-    // TODO: will be implemented in Task 6
+    // Store validity state
+    this.isValid = isValid;
+    this.currentPosition = gridPos;
+
+    // Get actual width/height based on orientation
+    const w = this.orientation % 2 === 0 ? this.config.width : this.config.height;
+    const h = this.orientation % 2 === 0 ? this.config.height : this.config.width;
+
+    // Calculate center position for multi-tile buildings
+    // The gridPos represents the top-left corner of the building footprint
+    // We need to center the mesh on the full footprint
+    const centerX = gridPos.x + (w - 1) / 2;
+    const centerZ = gridPos.z + (h - 1) / 2;
+
+    // Convert to world coordinates
+    const worldPos = gridToWorld(centerX, centerZ);
+
+    // Update mesh positions (y=0.5 to place mesh above ground)
+    this.previewMesh.position.set(worldPos.x, 0.5, worldPos.z);
+    this.outlineMesh.position.set(worldPos.x, 0.5, worldPos.z);
+
+    // Update outline color based on validity
+    const outlineColor = isValid ? 0x00ff00 : 0xff0000;
+    this.outlineMesh.material.color.setHex(outlineColor);
   }
 
   rotate() {
