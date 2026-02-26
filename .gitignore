@@ -23,3 +23,5 @@ tests/browser/results/*.txt
 tests/browser/results/*.png
 test-*.png
 web/test-imports.html
+*.png
+web/test-*.html

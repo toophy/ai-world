@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Game Debug</title>
+</head>
+<body>
+<h1>Game Loading Debug</h1>
+<div id="output"></div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+const output = document.getElementById('output');
+
+function log(msg) {
+  output.innerHTML += '<p>' + msg + '</p>';
+  console.log(msg);
+}
+
+log('Starting debug...');
+
+try {
+  log('✓ Import map loaded');
+
+  // Test config.js
+  log('Loading config.js...');
+  import('./js/config.js').then(config => {
+    log('✓ config.js loaded: ' + Object.keys(config));
+
+    // Test geometry.js
+    return import('./js/utils/geometry.js');
+  }).then(geometry => {
+    log('✓ geometry.js loaded: ' + Object.keys(geometry));
+
+    // Test Building.js
+    return import('./js/entities/Building.js');
+  }).then(Building => {
+    log('✓ Building.js loaded');
+
+    // Test BuildingRenderer.js
+    return import('./js/systems/BuildingRenderer.js');
+  }).then(BuildingRenderer => {
+    log('✓ BuildingRenderer.js loaded');
+
+    // Test game.js
+    return import('./game.js');
+  }).then(game => {
+    log('✓ game.js loaded');
+    log('<strong style="color:green">All modules loaded successfully!</strong>');
+  }).catch(error => {
+    log('<strong style="color:red">✗ Error: ' + error.message + '</strong>');
+    console.error(error);
+  });
+
+} catch(e) {
+  log('<strong style="color:red">✗ Fatal error: ' + e.message + '</strong>');
+  console.error(e);
+}
+</script>
+</body>
+</html>

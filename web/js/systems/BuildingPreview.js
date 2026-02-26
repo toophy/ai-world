@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { BUILDING_TYPES } from '../config.js';
-import { gridToWorld, TILE_SIZE } from '../utils/geometry.js';
+import { BUILDING_TYPES, TILE_SIZE } from '../config.js';
+import { gridToWorld } from '../utils/geometry.js';
 
 export class BuildingPreview {
   constructor(scene, buildingType, orientation = 0) {
