@@ -70,6 +70,18 @@ body,
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.resource-name {
+  color: var(--text-dim);
+}
+
+.resource-amount {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .clock-group {
@@ -630,4 +642,93 @@ h3 {
   text-align: center;
   color: var(--text-dim);
   font-size: 13px;
+}
+
+/* Notification animations */
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Notification styles */
+.notification {
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+.notification-info {
+  border-color: var(--accent);
+}
+
+.notification-success {
+  border-color: var(--ok);
+}
+
+.notification-warning {
+  border-color: #f39c12;
+}
+
+.notification-error {
+  border-color: var(--danger);
+}
+
+/* Pawn card styles */
+.pawn-card {
+  border: 1px solid rgba(124, 147, 189, 0.4);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pawn-card:hover {
+  background: rgba(121, 176, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.pawn-card.selected {
+  border-color: var(--accent);
+  background: rgba(121, 176, 255, 0.15);
+}
+
+.pawn-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pawn-avatar-small {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--panel-border);
+}
+
+.pawn-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.pawn-status {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.pawn-desires {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.desire-icon {
+  font-size: 12px;
 }
