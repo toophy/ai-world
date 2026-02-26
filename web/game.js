@@ -1,7 +1,15 @@
 import * as THREE from "https://unpkg.com/three@0.166.1/build/three.module.js";
-import { TILE_SIZE, MAP_SIZE, HALF, TERRAIN, TASK_LABELS, MODE_TIPS } from "./js/config.js";
-import { gridToWorld, worldToGrid, inBounds } from "./js/utils/geometry.js";
+import { TILE_SIZE, MAP_SIZE, HALF, TERRAIN, TASK_LABELS, MODE_TIPS, TASK_TYPES, BUILDING_TYPES, SKILL_LABELS } from "./js/config.js";
+import { gridToWorld, worldToGrid, inBounds, isValidGrid } from "./js/utils/geometry.js";
 import { Pawn } from "./js/entities/Pawn.js";
+import { Task } from "./js/entities/Task.js";
+import { Building } from "./js/entities/Building.js";
+import { TaskSystem } from "./js/systems/TaskSystem.js";
+import { TimeSystem } from "./js/systems/TimeSystem.js";
+import { CameraFollow } from "./js/systems/CameraFollow.js";
+import { TaskMarker } from "./js/systems/TaskMarker.js";
+import { UIManager } from "./js/ui/UIManager.js";
+import { InputManager } from "./js/input/InputManager.js";
 
 const state = {
   gameSpeed: 1,
@@ -15,8 +23,16 @@ const state = {
   berryBushes: [],
   houses: [],
   ores: [],
+  buildings: [],
   map: [],
   logs: [],
+  // System references (will be initialized after scene setup)
+  taskSystem: null,
+  timeSystem: null,
+  cameraFollow: null,
+  taskMarker: null,
+  uiManager: null,
+  inputManager: null,
 };
 
 const ui = {
@@ -58,6 +74,11 @@ const pointer = new THREE.Vector2();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const tileMeshes = [];
 const clock = new THREE.Clock();
+
+// Pathfinding system wrapper for TaskSystem compatibility
+const pathSystem = {
+  findPath: null, // Will be set to findPath function after it's defined
+};
 
 function randomRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -166,6 +187,7 @@ function addHouse(x, z) {
   const house = { id: crypto.randomUUID(), x, z, hp: 100, mesh };
   mesh.userData = { kind: "house", entity: house };
   state.houses.push(house);
+  state.buildings.push(house); // Also add to buildings array
   world.add(mesh);
   state.map[z][x].occupied = true;
 }
@@ -229,16 +251,24 @@ function findPath(start, goal) {
   return [];
 }
 
+// Set pathSystem.findPath reference for TaskSystem
+pathSystem.findPath = findPath;
+
 function createTask(type, x, z, payload = {}) {
-  state.tasks.push({
-    id: crypto.randomUUID(),
-    type,
-    x,
-    z,
-    status: "queued",
+  const task = new Task(type, x, z, {
     priority: payload.priority ?? 5,
-    payload,
+    status: "queued",
+    resources: payload.resources,
+    buildingType: payload.buildingType,
   });
+  state.tasks.push(task);
+
+  // Also add to TaskSystem if it exists
+  if (state.taskSystem) {
+    state.taskSystem.addTask(task);
+  }
+
+  return task;
 }
 
 function logEvent(text) {
@@ -247,6 +277,13 @@ function logEvent(text) {
 }
 
 function assignTasks() {
+  // Use TaskSystem if available, otherwise fall back to legacy logic
+  if (state.taskSystem) {
+    state.taskSystem.assignTasks();
+    return;
+  }
+
+  // Legacy assignment logic
   const queued = state.tasks.filter((t) => t.status === "queued").sort((a, b) => b.priority - a.priority);
   for (const pawn of state.pawns) {
     if (pawn.task) continue;
@@ -313,19 +350,37 @@ function finishTask(pawn, task) {
     }
   }
 
-  state.tasks = state.tasks.filter((t) => t.id !== task.id);
-  pawn.task = null;
+  // Mark task as completed and let TaskSystem handle cleanup
+  task.status = "completed";
+  task.completedAt = Date.now();
+
+  // Clear pawn task references
+  if (pawn.task === task) {
+    pawn.task = null;
+  }
+  if (pawn.currentTask === task) {
+    pawn.currentTask = null;
+  }
   pawn.workTimer = 0;
+
+  // Gain experience
+  pawn.gainExperience(task.type);
+  pawn.addHistoryEntry(`完成 ${task.label || task.type}`);
 }
 
 function updatePawn(pawn, dt) {
-  pawn.hunger += dt * 0.8;
+  // Update needs using the Pawn class method
+  pawn.updateNeeds(dt * state.gameSpeed);
+
+  // Handle hunger
+  pawn.hunger += dt * 0.8 * state.gameSpeed;
   if (pawn.hunger > 70 && state.resources.food > 0) {
     state.resources.food -= 1;
     pawn.hunger -= 20;
     logEvent(`${pawn.name} 自动进食`);
   }
 
+  // Handle movement
   if (pawn.targetPath.length > 0) {
     const next = pawn.targetPath[0];
     const wp = gridToWorld(next.x, next.z);
@@ -344,14 +399,20 @@ function updatePawn(pawn, dt) {
     return;
   }
 
-  if (pawn.task) {
+  // Handle work - check both task (old) and currentTask (new) for compatibility
+  const currentTask = pawn.currentTask || pawn.task;
+  if (currentTask) {
     pawn.workTimer += dt * state.gameSpeed;
-    if (pawn.workTimer >= 1.4) finishTask(pawn, pawn.task);
+    const workTime = pawn.getWorkTime ? pawn.getWorkTime(currentTask.type) : 1.4;
+    if (pawn.workTimer >= workTime) {
+      finishTask(pawn, currentTask);
+    }
   } else {
-    // 自动派发：寻找成熟浆果
+    // Auto-dispatch: find mature berry bushes
     const mature = state.berryBushes.find((b) => b.berryCount > 0);
-    if (mature && !state.tasks.some((t) => t.type === "harvest_berry" && t.x === mature.x && t.z === mature.z)) {
-      createTask("harvest_berry", mature.x, mature.z, { priority: 9 });
+    if (mature && !state.taskSystem.hasTaskAt(mature.x, mature.z)) {
+      const task = new Task("harvest_berry", mature.x, mature.z, { priority: 9 });
+      state.taskSystem.addTask(task);
     }
   }
 }
@@ -397,6 +458,26 @@ function drawMinimap() {
 }
 
 function renderUI() {
+  // If UIManager is available, use it for some updates
+  if (state.uiManager) {
+    // UIManager handles its own updates in tick()
+  } else {
+    // Legacy UI rendering
+    ui.resourceGroup.innerHTML = Object.entries(state.resources)
+      .map(([k, v]) => `<div class="resource">${k.toUpperCase()}: ${Math.floor(v)}</div>`)
+      .join("");
+
+    ui.pawnList.innerHTML = state.pawns
+      .map(
+        (p) =>
+          `<div class="card"><b>${p.name}</b><br/>HP: ${p.hp} | 饥饿: ${p.hunger.toFixed(0)}<br/>当前: ${
+            p.task ? labelTask(p.task.type) : "空闲"
+          }</div>`
+      )
+      .join("");
+  }
+
+  // Always update these legacy UI elements
   ui.resourceGroup.innerHTML = Object.entries(state.resources)
     .map(([k, v]) => `<div class="resource">${k.toUpperCase()}: ${Math.floor(v)}</div>`)
     .join("");
@@ -404,16 +485,10 @@ function renderUI() {
   const h = String(Math.floor(state.hour) % 24).padStart(2, "0");
   ui.dayLabel.textContent = `第 ${state.day} 天 ${h}:00`;
 
-  ui.pawnList.innerHTML = state.pawns
-    .map(
-      (p) =>
-        `<div class="card"><b>${p.name}</b><br/>HP: ${p.hp} | 饥饿: ${p.hunger.toFixed(0)}<br/>当前: ${
-          p.task ? labelTask(p.task.type) : "空闲"
-        }</div>`
-    )
-    .join("");
-
-  ui.taskList.innerHTML = state.tasks
+  // Update task list from TaskSystem
+  const tasks = state.taskSystem ? state.taskSystem.tasks : state.tasks;
+  ui.taskList.innerHTML = tasks
+    .filter(t => t.status !== "completed" && t.status !== "cancelled")
     .map((t) => `<div class="card">${labelTask(t.type)} @(${t.x},${t.z})<br/>状态: ${t.status}</div>`)
     .join("");
 
@@ -449,6 +524,11 @@ function setMode(mode) {
   for (const btn of document.querySelectorAll(".bottom-bar button")) {
     btn.classList.toggle("active", btn.dataset.mode === mode);
   }
+
+  // Also update InputManager mode if available
+  if (state.inputManager) {
+    state.inputManager.setMode(mode);
+  }
 }
 
 function getClickedGrid(event) {
@@ -473,9 +553,24 @@ canvas.addEventListener("click", (event) => {
 
   if (state.selectedMode === "inspect") {
     inspectAt(info.hit);
+
+    // Also update UI manager if available
+    if (state.uiManager && info.hit?.object.userData.entity) {
+      const entity = info.hit.object.userData.entity;
+      if (entity instanceof Pawn) {
+        state.uiManager.setSelectedPawn(entity);
+      }
+    }
     return;
   }
 
+  // If InputManager is available, let it handle the interaction
+  if (state.inputManager) {
+    // InputManager handles mode-based interactions
+    return;
+  }
+
+  // Legacy fallback
   if (state.selectedMode === "build_house") {
     if (isPassable(cellPos.x, cellPos.z) && state.map[cellPos.z][cellPos.x].type !== "water") {
       createTask("build_house", cellPos.x, cellPos.z, { priority: 8 });
@@ -517,7 +612,13 @@ for (const btn of document.querySelectorAll(".bottom-bar button")) {
 }
 for (const btn of document.querySelectorAll(".clock-group button")) {
   btn.addEventListener("click", () => {
-    state.gameSpeed = Number(btn.dataset.speed);
+    const speed = Number(btn.dataset.speed);
+    if (state.timeSystem) {
+      state.timeSystem.setSpeed(speed);
+      state.gameSpeed = speed;
+    } else {
+      state.gameSpeed = speed;
+    }
     for (const b of document.querySelectorAll(".clock-group button")) b.classList.remove("active");
     btn.classList.add("active");
   });
@@ -527,6 +628,39 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+});
+
+// Build mode buttons - connect to InputManager
+document.querySelectorAll('.build-btn, .action-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    const building = btn.dataset.building;
+
+    document.querySelectorAll('.build-btn, .action-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (state.inputManager) {
+      if (building) {
+        state.inputManager.setMode(mode, building);
+      } else {
+        state.inputManager.setMode(mode);
+      }
+    } else {
+      // Legacy fallback
+      state.selectedMode = mode;
+    }
+  });
+});
+
+// Priority buttons
+document.querySelectorAll('.priority-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (state.inputManager && state.inputManager.modeHandler) {
+      state.inputManager.modeHandler.setPriority(parseInt(btn.dataset.priority));
+    }
+  });
 });
 
 function seedWorld() {
@@ -554,16 +688,97 @@ function seedWorld() {
   logEvent("殖民地着陆完成。请选择底部指令开始建设。");
 }
 
-function tick(delta) {
-  state.hour += delta * 0.3 * state.gameSpeed;
-  if (state.hour >= 24) {
-    state.hour -= 24;
-    state.day += 1;
+function initSystems() {
+  // Initialize systems
+  state.taskSystem = new TaskSystem(state, pathSystem);
+  state.timeSystem = new TimeSystem();
+  state.cameraFollow = new CameraFollow(camera);
+  state.taskMarker = new TaskMarker(scene, state.taskSystem);
+  state.uiManager = new UIManager(state, state.taskSystem);
+  state.inputManager = new InputManager(canvas, camera, raycaster, groundPlane, state, state.taskSystem, pathSystem, state.uiManager);
+
+  // Sync initial state
+  state.timeSystem.gameSpeed = state.gameSpeed;
+  state.timeSystem.hour = state.hour;
+  state.timeSystem.day = state.day;
+
+  // Initialize UI
+  state.uiManager.init();
+
+  // Migrate existing tasks to TaskSystem
+  for (const task of state.tasks) {
+    if (task instanceof Task) {
+      state.taskSystem.addTask(task);
+    } else {
+      // Convert legacy task to Task instance
+      const newTask = new Task(task.type, task.x, task.z, {
+        priority: task.priority,
+        status: task.status,
+        assignee: task.assignee,
+      });
+      state.taskSystem.addTask(newTask);
+    }
   }
 
-  assignTasks();
-  for (const pawn of state.pawns) updatePawn(pawn, delta);
-  growPlants(delta);
+  console.log("Systems initialized");
+}
+
+function tick(delta) {
+  // Update time system
+  let effectiveDt = delta;
+  if (state.timeSystem) {
+    effectiveDt = state.timeSystem.update(delta);
+    if (effectiveDt === 0) {
+      // Game is paused
+      return;
+    }
+    // Sync legacy state
+    state.hour = state.timeSystem.hour;
+    state.day = state.timeSystem.day;
+    state.gameSpeed = state.timeSystem.gameSpeed;
+  } else {
+    // Legacy time update
+    state.hour += delta * 0.3 * state.gameSpeed;
+    if (state.hour >= 24) {
+      state.hour -= 24;
+      state.day += 1;
+    }
+  }
+
+  // Assign tasks through TaskSystem
+  if (state.taskSystem) {
+    state.taskSystem.assignTasks();
+  } else {
+    assignTasks();
+  }
+
+  // Update pawns
+  for (const pawn of state.pawns) {
+    updatePawn(pawn, effectiveDt);
+  }
+
+  // Grow plants
+  growPlants(effectiveDt);
+
+  // Update task markers
+  if (state.taskMarker) {
+    state.taskMarker.update();
+  }
+
+  // Update UI
+  if (state.uiManager) {
+    state.uiManager.updateAll();
+  }
+
+  // Update camera follow
+  if (state.cameraFollow) {
+    state.cameraFollow.update(effectiveDt);
+  }
+
+  // Cleanup completed tasks
+  if (state.taskSystem) {
+    state.taskSystem.cleanup();
+  }
 }
 
 function animate() {
@@ -574,6 +789,8 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
+// Initialize the game
 seedWorld();
+initSystems();
 renderUI();
 animate();
