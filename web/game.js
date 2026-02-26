@@ -1,4 +1,4 @@
-import * as THREE from "https://unpkg.com/three@0.166.1/build/three.module.js";
+import * as THREE from "three";
 import { TILE_SIZE, MAP_SIZE, HALF, TERRAIN, TASK_LABELS, MODE_TIPS, TASK_TYPES, BUILDING_TYPES, SKILL_LABELS } from "./js/config.js";
 import { gridToWorld, worldToGrid, inBounds, isValidGrid } from "./js/utils/geometry.js";
 import { Pawn } from "./js/entities/Pawn.js";
