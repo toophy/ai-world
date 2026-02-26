@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frontier Colony - Three.js</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar panel">
+      <div class="logo">Frontier Colony</div>
+      <div class="resources" id="resourceBar"></div>
+      <div class="clock" id="clock">Day 1 06:00</div>
+    </header>
+
+    <aside class="left panel">
+      <h3>殖民者</h3>
+      <div id="colonistList"></div>
+      <h3>任务概览</h3>
+      <div id="taskStats"></div>
+    </aside>
+
+    <main class="viewport-wrap panel">
+      <canvas id="gameCanvas"></canvas>
+      <div class="hud-tip" id="hudTip">左键选择地块 / 右键取消选择</div>
+    </main>
+
+    <aside class="right panel">
+      <h3>地块检视</h3>
+      <div id="tileInspector">未选择地块</div>
+      <h3>任务队列</h3>
+      <div id="taskQueue"></div>
+      <h3>事件日志</h3>
+      <div id="eventLog" class="log"></div>
+    </aside>
+
+    <footer class="bottombar panel">
+      <button data-tool="move">移动</button>
+      <button data-tool="build">建造房屋</button>
+      <button data-tool="plant">种植</button>
+      <button data-tool="harvest">采集浆果</button>
+      <button data-tool="mine">开采矿物</button>
+      <button data-tool="attack">徒手攻击</button>
+      <span class="active-tool" id="activeToolLabel">当前模式: move</span>
+    </footer>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.163.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
