@@ -11,6 +11,9 @@ import { TaskMarker } from "./js/systems/TaskMarker.js";
 import { UIManager } from "./js/ui/UIManager.js";
 import { InputManager } from "./js/input/InputManager.js";
 import { BuildingRenderer } from "./js/systems/BuildingRenderer.js";
+import { GameCursor } from "./js/ui/GameCursor.js";
+import { TileHighlight } from "./js/ui/TileHighlight.js";
+import { EntityHighlight } from "./js/ui/EntityHighlight.js";
 
 const state = {
   gameSpeed: 1,
@@ -919,6 +922,11 @@ function initSystems() {
   state.buildingRenderer = new BuildingRenderer(scene, state.buildings);
   state.inputManager = new InputManager(canvas, camera, raycaster, groundPlane, state, state.taskSystem, pathSystem, state.uiManager, scene);
 
+  // Initialize UI components
+  state.gameCursor = new GameCursor(scene);
+  state.tileHighlight = new TileHighlight(scene);
+  state.entityHighlight = new EntityHighlight(scene);
+
   // Sync initial state
   state.timeSystem.gameSpeed = state.gameSpeed;
   state.timeSystem.hour = state.hour;
@@ -1036,6 +1044,12 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   tick(dt);
   renderUI();
+
+  // Update entity highlight to follow moving entities
+  if (state.entityHighlight) {
+    state.entityHighlight.update();
+  }
+
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

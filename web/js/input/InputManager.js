@@ -6,6 +6,7 @@ import { PlacementValidator } from '../systems/PlacementValidator.js';
 import { Building } from '../entities/Building.js';
 import { Task } from '../entities/Task.js';
 import { worldToGrid } from '../utils/geometry.js';
+import { GameCursor } from '../ui/GameCursor.js';
 
 export class InputManager {
   constructor(canvas, camera, raycaster, groundPlane, state, taskSystem, pathSystem, uiManager, scene) {
@@ -28,6 +29,9 @@ export class InputManager {
 
     // Building preview system
     this.buildingPreview = null;
+
+    // Game cursor system
+    this.gameCursor = new GameCursor(scene);
 
     // Store handler references for cleanup
     this._boundHandlers = {
@@ -76,6 +80,14 @@ export class InputManager {
   _handlePointerMove(e) {
     this.selectionHandler.onMove({ x: e.clientX, y: e.clientY });
 
+    // Update game cursor position
+    if (this.gameCursor) {
+      const worldPos = this._getWorldPosition(e);
+      if (worldPos) {
+        this.gameCursor.updatePosition(worldPos);
+      }
+    }
+
     // Handle building preview update
     if (this.buildingPreview) {
       this._updateBuildingPreview(e);
@@ -92,6 +104,9 @@ export class InputManager {
         // Building was placed, don't process normal interaction
         return;
       }
+
+      // Update highlights based on what was clicked
+      this._updateHighlights(clickedEntity, e);
 
       this.modeHandler.handleInteraction(selectedTiles, clickedEntity);
     }
@@ -127,6 +142,27 @@ export class InputManager {
     if ((e.key === 'r' || e.key === 'R') && this.buildingPreview) {
       this.buildingPreview.rotate();
     }
+  }
+
+  /**
+   * Get world position from pointer event using raycasting
+   * @param {PointerEvent} e - The pointer event
+   * @returns {THREE.Vector3|null} World position or null if raycast failed
+   */
+  _getWorldPosition(e) {
+    this.raycaster.setFromCamera(
+      new THREE.Vector2(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1
+      ),
+      this.camera
+    );
+
+    const point = new THREE.Vector3();
+    if (this.raycaster.ray.intersectPlane(this.groundPlane, point)) {
+      return point;
+    }
+    return null;
   }
 
   /**
@@ -347,6 +383,26 @@ export class InputManager {
 
   setMode(mode, buildingType = null) {
     this.modeHandler.setMode(mode, buildingType);
+
+    // Update game cursor based on mode
+    if (this.gameCursor) {
+      let cursorType = 'inspect';
+
+      switch (mode) {
+        case 'build':
+          cursorType = 'build';
+          break;
+        case 'demolish':
+          cursorType = 'demolish';
+          break;
+        case 'inspect':
+        default:
+          cursorType = 'inspect';
+          break;
+      }
+
+      this.gameCursor.setCursor(cursorType);
+    }
   }
 
   toggleFollowMode() {
@@ -385,6 +441,40 @@ export class InputManager {
       this.buildingPreview.destroy();
       this.buildingPreview = null;
       console.log('Building preview ended');
+    }
+  }
+
+  /**
+   * Update tile and entity highlights based on click
+   * @param {Object} clickedEntity - The entity that was clicked, if any
+   * @param {PointerEvent} e - The pointer event
+   */
+  _updateHighlights(clickedEntity, e) {
+    if (!this.state.tileHighlight || !this.state.entityHighlight) {
+      return;
+    }
+
+    if (clickedEntity && clickedEntity.entity) {
+      // An entity was clicked - show entity highlight
+      const entity = clickedEntity.entity;
+      const entityMesh = clickedEntity.object;
+
+      // Clear tile highlight
+      this.state.tileHighlight.hide();
+
+      // Show entity highlight
+      this.state.entityHighlight.show(entity, entityMesh);
+    } else {
+      // No entity was clicked - show tile highlight at click position
+      this.state.entityHighlight.clear();
+
+      const worldPos = this._getWorldPosition(e);
+      if (worldPos) {
+        const gridPos = worldToGrid(worldPos.x, worldPos.z);
+        this.state.tileHighlight.show(gridPos, 'select');
+      } else {
+        this.state.tileHighlight.hide();
+      }
     }
   }
 }
