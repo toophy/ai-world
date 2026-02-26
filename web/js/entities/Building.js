@@ -1,11 +1,13 @@
 import { BUILDING_TYPES } from '../config.js';
 
 export class Building {
-  constructor(type, x, z) {
+  constructor(type, x, z, orientation = 0) {
     this.id = crypto.randomUUID();
     this.type = type;
     this.x = x;
     this.z = z;
+    this.orientation = orientation; // 0-3 for 0°, 90°, 180°, 270°
+    this.state = 'constructing'; // 'planning' | 'constructing' | 'complete' | 'demolishing'
     this.hp = 100;
     this.maxHp = 100;
     this.progress = 0; // Construction progress 0-100
@@ -50,5 +52,19 @@ export class Building {
     if (this.type === 'door') {
       this.open = !this.open;
     }
+  }
+
+  getOccupiedTiles() {
+    // Swap width/height for odd orientations (90° or 270°)
+    const w = this.orientation % 2 === 0 ? this.width : this.height;
+    const h = this.orientation % 2 === 0 ? this.height : this.width;
+
+    const tiles = [];
+    for (let dz = 0; dz < h; dz++) {
+      for (let dx = 0; dx < w; dx++) {
+        tiles.push({ x: this.x + dx, z: this.z + dz });
+      }
+    }
+    return tiles;
   }
 }
