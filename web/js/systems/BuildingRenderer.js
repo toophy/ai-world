@@ -2,6 +2,15 @@ import * as THREE from "three";
 import { TILE_SIZE } from '../config.js';
 import { gridToWorld } from '../utils/geometry.js';
 
+// Constants for building visualization
+const MIN_OPACITY = 0.3;
+const OPACITY_RANGE = 0.7;
+const OUTLINE_OPACITY = 0.8;
+const CONSTRUCTION_COMPLETE_PROGRESS = 100;
+const FULL_OPACITY = 1.0;
+const MESH_HEIGHT = 0.5;
+const OUTLINE_COLOR = 0x00ff00; // Green for construction
+
 /**
  * BuildingRenderer - Handles visualization of buildings with construction progress
  *
@@ -10,6 +19,8 @@ import { gridToWorld } from '../utils/geometry.js';
  * - Shows green outline during construction
  * - Removes outline and sets full opacity when complete
  * - Updates building visuals in real-time as progress changes
+ *
+ * TODO (performance): Consider adding dirty flags to avoid updating all buildings every frame
  */
 export class BuildingRenderer {
   /**
@@ -25,10 +36,25 @@ export class BuildingRenderer {
   /**
    * Calculate opacity based on construction progress
    * @param {number} progress - Construction progress (0-100)
-   * @returns {number} Opacity value (0.3 to 1.0)
+   * @returns {number} Opacity value (MIN_OPACITY to FULL_OPACITY)
    */
   calculateOpacity(progress) {
-    return 0.3 + (progress / 100) * 0.7;
+    return MIN_OPACITY + (progress / CONSTRUCTION_COMPLETE_PROGRESS) * OPACITY_RANGE;
+  }
+
+  /**
+   * Properly dispose of mesh geometry and materials
+   * @param {Object} meshes - Object containing mesh and outline properties
+   * @private
+   */
+  _disposeMeshes(meshes) {
+    this.scene.remove(meshes.mesh);
+    this.scene.remove(meshes.outline);
+
+    if (meshes.mesh.geometry) meshes.mesh.geometry.dispose();
+    if (meshes.mesh.material) meshes.mesh.material.dispose();
+    if (meshes.outline.geometry) meshes.outline.geometry.dispose();
+    if (meshes.outline.material) meshes.outline.material.dispose();
   }
 
   /**
@@ -67,9 +93,9 @@ export class BuildingRenderer {
     // Create outline using edges
     const edges = new THREE.EdgesGeometry(geometry);
     const lineMaterial = new THREE.LineBasicMaterial({
-      color: 0x00ff00, // Green for construction
+      color: OUTLINE_COLOR,
       transparent: true,
-      opacity: 0.8,
+      opacity: OUTLINE_OPACITY,
     });
 
     const outline = new THREE.LineSegments(edges, lineMaterial);
@@ -79,8 +105,8 @@ export class BuildingRenderer {
     const centerZ = building.z + (h - 1) / 2;
     const worldPos = gridToWorld(centerX, centerZ);
 
-    mesh.position.set(worldPos.x, 0.5, worldPos.z);
-    outline.position.set(worldPos.x, 0.5, worldPos.z);
+    mesh.position.set(worldPos.x, MESH_HEIGHT, worldPos.z);
+    outline.position.set(worldPos.x, MESH_HEIGHT, worldPos.z);
 
     // Apply rotation based on orientation
     const angle = building.orientation * Math.PI / 2;
@@ -88,9 +114,9 @@ export class BuildingRenderer {
     outline.rotation.y = angle;
 
     // Hide outline if building is complete
-    if (building.progress >= 100 || building.isComplete) {
+    if (building.progress >= CONSTRUCTION_COMPLETE_PROGRESS || building.isComplete) {
       outline.visible = false;
-      material.opacity = 1.0;
+      material.opacity = FULL_OPACITY;
     }
 
     return { mesh, outline };
@@ -124,16 +150,9 @@ export class BuildingRenderer {
     const meshes = this.buildingMeshes.get(building.id);
     if (!meshes) return;
 
-    this.scene.remove(meshes.mesh);
-    this.scene.remove(meshes.outline);
-
-    // Dispose geometry and materials
-    if (meshes.mesh.geometry) meshes.mesh.geometry.dispose();
-    if (meshes.mesh.material) meshes.mesh.material.dispose();
-    if (meshes.outline.geometry) meshes.outline.geometry.dispose();
-    if (meshes.outline.material) meshes.outline.material.dispose();
-
+    this._disposeMeshes(meshes);
     this.buildingMeshes.delete(building.id);
+
     if (building.mesh === meshes.mesh) {
       building.mesh = null;
     }
@@ -148,23 +167,25 @@ export class BuildingRenderer {
     if (!meshes) return;
 
     const { mesh, outline } = meshes;
-    const isComplete = building.progress >= 100 || building.isComplete;
+    const isComplete = building.progress >= CONSTRUCTION_COMPLETE_PROGRESS || building.isComplete;
 
-    // Update opacity based on progress
-    mesh.material.opacity = this.calculateOpacity(building.progress);
+    // Update opacity based on progress (only if not complete)
+    if (!isComplete) {
+      mesh.material.opacity = this.calculateOpacity(building.progress);
+    } else {
+      mesh.material.opacity = FULL_OPACITY;
+    }
 
     // Show/hide outline based on completion
-    if (isComplete) {
-      outline.visible = false;
-      mesh.material.opacity = 1.0;
-    } else {
-      outline.visible = true;
-    }
+    outline.visible = !isComplete;
   }
 
   /**
    * Update all buildings' visual appearances
    * Call this each frame to keep visuals in sync with building state
+   *
+   * TODO (performance): Consider using dirty flags to only update buildings
+   * whose state has actually changed since the last frame.
    */
   updateAll() {
     for (const building of this.buildings) {
@@ -175,18 +196,15 @@ export class BuildingRenderer {
   /**
    * Update the buildings array and sync meshes
    * @param {Array} buildings - New array of Building instances
+   *
+   * TODO (performance): This rebuilds all meshes on every call. For large numbers
+   * of buildings, consider incremental updates that only add/remove changed buildings.
    */
   setBuildings(buildings) {
     // Remove meshes for buildings that are no longer in the array
     for (const [id, meshes] of this.buildingMeshes) {
       if (!buildings.find(b => b.id === id)) {
-        this.scene.remove(meshes.mesh);
-        this.scene.remove(meshes.outline);
-
-        if (meshes.mesh.geometry) meshes.mesh.geometry.dispose();
-        if (meshes.mesh.material) meshes.mesh.material.dispose();
-        if (meshes.outline.geometry) meshes.outline.geometry.dispose();
-        if (meshes.outline.material) meshes.outline.material.dispose();
+        this._disposeMeshes(meshes);
       }
     }
 
@@ -207,13 +225,7 @@ export class BuildingRenderer {
    */
   dispose() {
     for (const [id, meshes] of this.buildingMeshes) {
-      this.scene.remove(meshes.mesh);
-      this.scene.remove(meshes.outline);
-
-      if (meshes.mesh.geometry) meshes.mesh.geometry.dispose();
-      if (meshes.mesh.material) meshes.mesh.material.dispose();
-      if (meshes.outline.geometry) meshes.outline.geometry.dispose();
-      if (meshes.outline.material) meshes.outline.material.dispose();
+      this._disposeMeshes(meshes);
     }
 
     this.buildingMeshes.clear();
