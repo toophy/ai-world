@@ -53,6 +53,11 @@ export class UIManager {
     const pawnList = document.getElementById('pawn-list');
     if (!pawnList) return;
 
+    // Remove existing event listener if any (stored on element)
+    if (this._pawnListHandler) {
+      pawnList.removeEventListener('click', this._pawnListHandler);
+    }
+
     pawnList.innerHTML = this.state.pawns.map(pawn => `
       <div class="pawn-card ${this.selectedPawn?.id === pawn.id ? 'selected' : ''}" data-pawn-id="${pawn.id}">
         <div class="pawn-card-header">
@@ -68,16 +73,18 @@ export class UIManager {
       </div>
     `).join('');
 
-    // Add click handlers
-    pawnList.querySelectorAll('.pawn-card').forEach(card => {
-      card.addEventListener('click', () => {
+    // Event delegation - single listener on parent
+    this._pawnListHandler = (e) => {
+      const card = e.target.closest('.pawn-card');
+      if (card) {
         const pawnId = card.dataset.pawnId;
         const pawn = this.state.pawns.find(p => p.id === pawnId);
         if (pawn) {
           this.showColonistDetail(pawn);
         }
-      });
-    });
+      }
+    };
+    pawnList.addEventListener('click', this._pawnListHandler);
   }
 
   getDesireIcon(type) {
@@ -121,5 +128,19 @@ export class UIManager {
       notification.style.animation = 'fadeOut 0.3s ease';
       setTimeout(() => notification.remove(), 300);
     }, 3000);
+  }
+
+  destroy() {
+    if (this.colonistDetailModal) {
+      this.colonistDetailModal.close();
+    }
+    if (this.taskCounterPanel && typeof this.taskCounterPanel.destroy === 'function') {
+      this.taskCounterPanel.destroy();
+    }
+    // Remove pawn list listener
+    const pawnList = document.getElementById('pawn-list');
+    if (pawnList && this._pawnListHandler) {
+      pawnList.removeEventListener('click', this._pawnListHandler);
+    }
   }
 }
