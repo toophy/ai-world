@@ -1,0 +1,59 @@
+/* Load DaisyUI which includes Tailwind */
+@import url('https://cdn.jsdelivr.net/npm/daisyui@5.5.5/dist/full.min.css');
+
+/* Custom theme extensions via CSS variables */
+:root {
+  --game-bg: #0f141f;
+  --game-panel: rgba(23, 26, 33, 0.88);
+  --game-border: rgba(132, 158, 210, 0.42);
+  --game-border-hover: rgba(121, 176, 255, 0.6);
+  --game-text: #dde8ff;
+  --game-text-dim: #b0bfd8;
+  --game-accent: #79b0ff;
+  --game-accent-hover: #8fc0ff;
+  --game-accent-glow: rgba(121, 176, 255, 0.3);
+  --game-danger: #e86a7c;
+  --game-success: #78d17a;
+  --game-warning: #f5a623;
+  --wood: #d4a574;
+  --ore: #a8b5c4;
+  --berry: #c06c84;
+  --food: #f4a261;
+}
+
+/* Custom backdrop blur utility */
+.backdrop-blur-xs {
+  backdrop-filter: blur(2px);
+}
+
+/* Custom animations */
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.3s ease-in;
+}
+
+.animate-bounce-subtle {
+  animation: bounceSubtle 0.3s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

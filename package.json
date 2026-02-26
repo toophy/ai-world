@@ -1,0 +1,30 @@
+{
+  "name": "ai-world",
+  "version": "1.0.0",
+  "description": "A Rust library for describing, hashing, validating, and patching sequential schedule assets intended for AI-driven debugging workflows. The crate models schedule assets (phases, nodes, breakpoints) and applies domain patches with validation and diagnostic reporting.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "npx tailwindcss -i ./web/tailwind-input.css -o ./web/tailwind.css --minify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toophy/ai-world.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/toophy/ai-world/issues"
+  },
+  "homepage": "https://github.com/toophy/ai-world#readme",
+  "devDependencies": {
+    "daisyui": "^5.5.5",
+    "tailwindcss": "^4.2.1"
+  }
+}
