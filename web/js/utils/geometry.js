@@ -8,9 +8,18 @@ export function gridToWorld(gx, gz) {
 
 // Convert world coordinates to grid coordinates
 export function worldToGrid(wx, wz) {
+  // Handle undefined input (can happen when raycast fails)
+  if (wx === undefined || wx === null) {
+    console.warn('worldToGrid called with undefined wx');
+    return { x: 0, z: 0 };
+  }
+
   // Handle both Vector3 and individual coordinates
   const x = wx.x !== undefined ? wx.x : wx;
-  const z = wz.z !== undefined ? wz.z : wz;
+  // Check if wz is provided (Vector3 mode) or use wx.z (single object mode)
+  const zValue = (wz !== undefined && wz.z !== undefined) ? wz.z : (wx.z !== undefined ? wx.z : wz);
+  const z = zValue;
+
   return {
     x: Math.floor(x / TILE_SIZE + HALF),
     z: Math.floor(z / TILE_SIZE + HALF)

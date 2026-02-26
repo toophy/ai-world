@@ -106,9 +106,10 @@ export class SelectionHandler {
       ),
       this.camera
     );
-    const intersects = this.raycaster.intersectObject(this.groundPlane);
-    if (intersects.length > 0) {
-      return intersects[0].point;
+    // Use ray.intersectPlane() since groundPlane is a THREE.Plane (mathematical plane), not an Object3D
+    const target = new THREE.Vector3();
+    if (this.raycaster.ray.intersectPlane(this.groundPlane, target)) {
+      return target;
     }
     return null;
   }

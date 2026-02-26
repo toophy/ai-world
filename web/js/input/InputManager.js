@@ -259,11 +259,9 @@ export class InputManager {
     );
 
     // Raycast against ground plane
-    const intersects = this.raycaster.intersectObject(this.groundPlane);
-
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
-
+    // Use ray.intersectPlane() since groundPlane is a THREE.Plane (mathematical plane), not an Object3D
+    const point = new THREE.Vector3();
+    if (this.raycaster.ray.intersectPlane(this.groundPlane, point)) {
       // Convert world position to grid coordinates
       const gridPos = worldToGrid(point.x, point.z);
 

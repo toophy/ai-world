@@ -37,7 +37,44 @@ const state = {
   buildingRenderer: null,
 };
 
-// Graphics and DOM elements will be initialized in initGraphics()
+const ui = {
+  resourceGroup: document.getElementById("resource-group"),
+  pawnList: document.getElementById("pawn-list"),
+  taskList: document.getElementById("task-list"),
+  inspector: document.getElementById("inspector"),
+  eventLog: document.getElementById("event-log"),
+  modeTip: document.getElementById("mode-tip"),
+  minimap: document.getElementById("minimap"),
+};
+
+const canvas = document.getElementById("game-canvas");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87a7c3);
+
+const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 42, 34);
+camera.lookAt(0, 0, 0);
+
+const hemi = new THREE.HemisphereLight(0xddeeff, 0x2b2f39, 0.8);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+sun.position.set(20, 35, 18);
+sun.castShadow = true;
+scene.add(sun);
+
+const world = new THREE.Group();
+scene.add(world);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const tileMeshes = [];
+const clock = new THREE.Clock();
 
 // Pathfinding system wrapper for TaskSystem compatibility
 const pathSystem = {
@@ -511,10 +548,6 @@ function completeTask(pawn, task) {
           building.isComplete = true;
           const buildingLabel = BUILDING_TYPES[building.type]?.label || building.type;
           logEvent(`${pawn.name} 完成建造: ${buildingLabel}`);
-          // Trigger flash effect for construction completion
-          if (state.buildingRenderer) {
-            state.buildingRenderer.flashBuilding(building.id, false);
-          }
         }
       } else {
         // Fallback for legacy buildings without buildingId
@@ -534,10 +567,6 @@ function completeTask(pawn, task) {
             state.map[task.z][task.x].occupied = true;
           }
           logEvent(`${pawn.name} 完成建造: ${BUILDING_TYPES[actualType]?.label || actualType}`);
-          // Trigger flash effect for construction completion
-          if (state.buildingRenderer) {
-            state.buildingRenderer.flashBuilding(building.id, false);
-          }
         }
       }
       break;
@@ -554,11 +583,6 @@ function completeTask(pawn, task) {
         if (buildingIndex !== undefined && buildingIndex >= 0) {
           const building = state.buildings[buildingIndex];
           const buildingLabel = BUILDING_TYPES[building.type]?.label || building.type;
-
-          // Trigger flash effect for demolition completion before removing
-          if (state.buildingRenderer) {
-            state.buildingRenderer.flashBuilding(building.id, true);
-          }
 
           // Remove from renderer
           if (state.buildingRenderer) {
@@ -704,7 +728,8 @@ function inspectAt(hit) {
     ui.inspector.innerHTML = "未选中对象";
     return;
   }
-  const { kind, entity, x, z } = hit.object.userData;
+  const userData = hit.object.userData || {};
+  const { kind, entity, x, z } = userData;
   if (kind === "pawn") {
     state.selectedEntity = entity;
     ui.inspector.innerHTML = `殖民者：<b>${entity.name}</b><br/>HP: ${entity.hp}<br/>饥饿: ${entity.hunger.toFixed(0)}<br/>位置: (${entity.pos.x},${entity.pos.z})`;
@@ -719,7 +744,12 @@ function inspectAt(hit) {
     const stateLabel = entity.isComplete ? '完成' : `建造中 ${entity.progress.toFixed(0)}%`;
     ui.inspector.innerHTML = `${label}<br/>状态: ${stateLabel}<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
   } else {
-    ui.inspector.innerHTML = `地块: ${state.map[z][x].type}<br/>坐标: (${x},${z})`;
+    // Handle case where x or z might be undefined
+    if (x !== undefined && z !== undefined && state.map[z] && state.map[z][x]) {
+      ui.inspector.innerHTML = `地块: ${state.map[z][x].type}<br/>坐标: (${x},${z})`;
+    } else {
+      ui.inspector.innerHTML = "未知对象";
+    }
   }
 }
 
@@ -749,9 +779,7 @@ function getClickedGrid(event) {
   return null;
 }
 
-// Canvas event listener - will be set up in setupEventListeners()
-// This is defined here but the actual addEventListener call happens in initGame()
-function onCanvasClick(event) {
+canvas.addEventListener("click", (event) => {
   const info = getClickedGrid(event);
   if (!info) return;
   const cellPos = worldToGrid(info.worldPos);
@@ -813,34 +841,48 @@ function onCanvasClick(event) {
   }
 });
 
-// Setup UI event listeners - will be called in initGame()
-function setupUIListeners() {
-  // Bottom bar buttons
-  for (const btn of document.querySelectorAll(".bottom-bar button")) {
-    btn.addEventListener("click", () => setMode(btn.dataset.mode));
-  }
-
-  // Build mode buttons - connect to InputManager
-  document.querySelectorAll('.build-btn, .action-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.mode;
-      const building = btn.dataset.building;
-
-      document.querySelectorAll('.build-btn, .action-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      if (state.inputManager) {
-        if (building) {
-          state.inputManager.setMode(mode, building);
-        } else {
-          state.inputManager.setMode(mode);
-        }
-      }
-    });
-  });
+for (const btn of document.querySelectorAll(".bottom-bar button")) {
+  btn.addEventListener("click", () => setMode(btn.dataset.mode));
 }
 
-// Legacy code removed - now handled by setupUIListeners()
+window.addEventListener("resize", () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// Build mode buttons - connect to InputManager
+document.querySelectorAll('.build-btn, .action-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    const building = btn.dataset.building;
+
+    document.querySelectorAll('.build-btn, .action-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (state.inputManager) {
+      if (building) {
+        state.inputManager.setMode(mode, building);
+      } else {
+        state.inputManager.setMode(mode);
+      }
+    } else {
+      // Legacy fallback
+      state.selectedMode = mode;
+    }
+  });
+});
+
+// Priority buttons
+document.querySelectorAll('.priority-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (state.inputManager && state.inputManager.modeHandler) {
+      state.inputManager.modeHandler.setPriority(parseInt(btn.dataset.priority));
+    }
+  });
+});
 
 function seedWorld() {
   makeMap();
@@ -998,80 +1040,8 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// Game globals (initialized after DOM is ready)
-let renderer, scene, camera, ui, canvas;
-let hemi, sun, world, raycaster, pointer, groundPlane, tileMeshes, clock;
-
-// Initialize Three.js and DOM elements
-function initGraphics() {
-  canvas = document.getElementById("game-canvas");
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87a7c3);
-
-  camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
-  camera.position.set(0, 42, 34);
-  camera.lookAt(0, 0, 0);
-
-  hemi = new THREE.HemisphereLight(0xddeeff, 0x2b2f39, 0.8);
-  scene.add(hemi);
-  sun = new THREE.DirectionalLight(0xffffff, 1.1);
-  sun.position.set(20, 35, 18);
-  sun.castShadow = true;
-  scene.add(sun);
-
-  world = new THREE.Group();
-  scene.add(world);
-
-  raycaster = new THREE.Raycaster();
-  pointer = new THREE.Vector2();
-  groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  tileMeshes = [];
-  clock = new THREE.Clock();
-}
-
-// Initialize UI elements
-function initUI() {
-  ui = {
-    resourceGroup: document.getElementById("resource-group"),
-    pawnList: document.getElementById("pawn-list"),
-    taskList: document.getElementById("task-list"),
-    inspector: document.getElementById("inspector"),
-    eventLog: document.getElementById("event-log"),
-    modeTip: document.getElementById("mode-tip"),
-    minimap: document.getElementById("minimap"),
-  };
-}
-
-// Setup event listeners
-function setupEventListeners() {
-  canvas.addEventListener("click", onCanvasClick);
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-}
-
-// Wait for DOM to be fully loaded before initializing
-function initGame() {
-  initGraphics();
-  initUI();
-  setupEventListeners();
-  setupUIListeners();
-  seedWorld();
-  initSystems();
-  renderUI();
-  animate();
-}
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initGame);
-} else {
-  initGame();
-}
+// Initialize the game
+seedWorld();
+initSystems();
+renderUI();
+animate();
