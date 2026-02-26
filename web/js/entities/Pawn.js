@@ -106,10 +106,13 @@ export class Pawn {
       build_wall: 'building',
       build_door: 'building',
       build_bed: 'building',
+      build_storage: 'building',
+      build_workbench: 'building',
       mine_ore: 'mining',
       plant_berry: 'planting',
       harvest_berry: 'planting',
       haul: 'hauling',
+      heal: 'medicine',
     };
     const skill = skillMap[taskType];
     if (skill && this.skills[skill] < 20) {
