@@ -12,43 +12,72 @@ export class Inspector extends BaseComponent {
 
     if (!entity) {
       content = '<div class="text-sm text-game-text-dim">点击地图单位查看详情</div>';
-    } else if (entity instanceof Pawn) {
+    } else if (entity.type === 'pawn') {
+      // 新的数据格式 (来自 inspectAt)
       content = `
         <div class="text-sm">
-          <div class="font-semibold text-game-text mb-2">${entity.name}</div>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div><span class="text-game-text-dim">HP:</span> ${entity.hp}/${entity.maxHp}</div>
-            <div><span class="text-game-text-dim">饥饿:</span> ${Math.floor(entity.hunger)}</div>
-            <div><span class="text-game-text-dim">能量:</span> ${Math.floor(entity.energy)}</div>
-            <div><span class="text-game-text-dim">位置:</span> (${entity.pos.x}, ${entity.pos.z})</div>
-          </div>
-          <div class="mt-2 pt-2 border-t border-game-border">
-            <div class="text-game-text-dim text-xs mb-1">技能</div>
-            ${Object.entries(entity.skills || {}).map(([skill, level]) => `
-              <div class="flex justify-between text-xs">
-                <span class="text-game-text-dim">${this.getSkillLabel(skill)}:</span>
-                <span class="text-game-accent">${level.toFixed(1)}</span>
-              </div>
-            `).join('')}
+          <div class="font-semibold text-game-text mb-2">殖民者</div>
+          <div class="text-xs text-game-text-dim space-y-1">
+            <div><span class="text-game-text-dim">名称:</span> ${entity.name || '未知'}</div>
+            <div><span class="text-game-text-dim">HP:</span> ${entity.hp || 'N/A'}</div>
+            <div><span class="text-game-text-dim">饥饿:</span> ${entity.hunger || 'N/A'}</div>
+            <div><span class="text-game-text-dim">位置:</span> ${entity.position || 'N/A'}</div>
           </div>
         </div>
       `;
-    } else if (entity.type && BUILDING_TYPES[entity.type]) {
-      const config = BUILDING_TYPES[entity.type];
-      const stateLabel = entity.isComplete ? '完成' : `建造中 ${entity.progress?.toFixed(0) || 0}%`;
-
+    } else if (entity.type === 'berry') {
       content = `
         <div class="text-sm">
-          <div class="font-semibold text-game-text mb-2">${config.label}</div>
+          <div class="font-semibold text-game-text mb-2">浆果灌木</div>
           <div class="text-xs text-game-text-dim space-y-1">
-            <div><span class="text-game-text-dim">状态:</span> ${stateLabel}</div>
-            <div><span class="text-game-text-dim">耐久:</span> ${entity.hp}</div>
-            <div><span class="text-game-text-dim">坐标:</span> (${entity.x}, ${entity.z})</div>
+            <div><span class="text-game-text-dim">成熟度:</span> ${entity.growth || 0}%</div>
+            <div><span class="text-game-text-dim">可收获:</span> ${entity.berryCount || 0}</div>
+          </div>
+        </div>
+      `;
+    } else if (entity.type === 'ore') {
+      content = `
+        <div class="text-sm">
+          <div class="font-semibold text-game-text mb-2">矿脉节点</div>
+          <div class="text-xs text-game-text-dim space-y-1">
+            <div><span class="text-game-text-dim">储量:</span> ${entity.amount || 0}</div>
+          </div>
+        </div>
+      `;
+    } else if (entity.type === 'house') {
+      content = `
+        <div class="text-sm">
+          <div class="font-semibold text-game-text mb-2">房屋</div>
+          <div class="text-xs text-game-text-dim space-y-1">
+            <div><span class="text-game-text-dim">耐久:</span> ${entity.hp || 0}</div>
+            <div><span class="text-game-text-dim">坐标:</span> ${entity.position || 'N/A'}</div>
+          </div>
+        </div>
+      `;
+    } else if (entity.type === 'building') {
+      content = `
+        <div class="text-sm">
+          <div class="font-semibold text-game-text mb-2">${entity.label || '建筑'}</div>
+          <div class="text-xs text-game-text-dim space-y-1">
+            <div><span class="text-game-text-dim">状态:</span> ${entity.state || '未知'}</div>
+            <div><span class="text-game-text-dim">耐久:</span> ${entity.hp || 0}</div>
+            <div><span class="text-game-text-dim">坐标:</span> ${entity.position || 'N/A'}</div>
+          </div>
+        </div>
+      `;
+    } else if (entity.type === 'tile') {
+      content = `
+        <div class="text-sm">
+          <div class="font-semibold text-game-text mb-2">地块</div>
+          <div class="text-xs text-game-text-dim space-y-1">
+            <div><span class="text-game-text-dim">地形:</span> ${entity.terrain || '未知'}</div>
+            <div><span class="text-game-text-dim">坐标:</span> ${entity.position || 'N/A'}</div>
           </div>
         </div>
       `;
     } else {
-      content = `<div class="text-sm text-game-text-dim">未知对象类型</div>`;
+      // 旧格式 (直接的 Pawn 或 Building 对象)
+      content = `<div class="text-sm text-game-text-dim">未知对象类型: ${JSON.stringify(entity).substring(0, 50)}</div>`;
     }
 
     return `

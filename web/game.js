@@ -735,31 +735,90 @@ function renderUI() {
 }
 
 function inspectAt(hit) {
+  // Use UIManager to show inspector if available
+  if (state.uiManager) {
+    if (!hit) {
+      state.uiManager.showInspector(null);
+      return;
+    }
+    const userData = hit.object.userData || {};
+    const { kind, entity, x, z } = userData;
+
+    // Build inspector data object
+    let inspectorData = null;
+    if (kind === "pawn") {
+      state.selectedEntity = entity;
+      inspectorData = {
+        type: 'pawn',
+        name: entity.name,
+        hp: entity.hp,
+        hunger: entity.hunger.toFixed(0),
+        position: `(${entity.pos.x},${entity.pos.z})`
+      };
+    } else if (kind === "berry") {
+      inspectorData = {
+        type: 'berry',
+        growth: (entity.growth * 100).toFixed(0),
+        berryCount: entity.berryCount
+      };
+    } else if (kind === "ore") {
+      inspectorData = {
+        type: 'ore',
+        amount: entity.amount
+      };
+    } else if (kind === "house") {
+      inspectorData = {
+        type: 'house',
+        hp: entity.hp,
+        position: `(${entity.x},${entity.z})`
+      };
+    } else if (kind === "building") {
+      const label = BUILDING_TYPES[entity.type]?.label || entity.type;
+      const stateLabel = entity.isComplete ? '完成' : `建造中 ${entity.progress.toFixed(0)}%`;
+      inspectorData = {
+        type: 'building',
+        label: label,
+        state: stateLabel,
+        hp: entity.hp,
+        position: `(${entity.x},${entity.z})`
+      };
+    } else if (x !== undefined && z !== undefined && state.map[z] && state.map[z][x]) {
+      inspectorData = {
+        type: 'tile',
+        terrain: state.map[z][x].type,
+        position: `(${x},${z})`
+      };
+    }
+
+    state.uiManager.showInspector(inspectorData);
+    return;
+  }
+
+  // Fallback to legacy DOM manipulation
   if (!hit) {
-    ui.inspector.innerHTML = "未选中对象";
+    if (ui.inspector) ui.inspector.innerHTML = "未选中对象";
     return;
   }
   const userData = hit.object.userData || {};
   const { kind, entity, x, z } = userData;
   if (kind === "pawn") {
     state.selectedEntity = entity;
-    ui.inspector.innerHTML = `殖民者：<b>${entity.name}</b><br/>HP: ${entity.hp}<br/>饥饿: ${entity.hunger.toFixed(0)}<br/>位置: (${entity.pos.x},${entity.pos.z})`;
+    if (ui.inspector) ui.inspector.innerHTML = `殖民者：<b>${entity.name}</b><br/>HP: ${entity.hp}<br/>饥饿: ${entity.hunger.toFixed(0)}<br/>位置: (${entity.pos.x},${entity.pos.z})`;
   } else if (kind === "berry") {
-    ui.inspector.innerHTML = `浆果灌木<br/>成熟度: ${(entity.growth * 100).toFixed(0)}%<br/>可收获: ${entity.berryCount}`;
+    if (ui.inspector) ui.inspector.innerHTML = `浆果灌木<br/>成熟度: ${(entity.growth * 100).toFixed(0)}%<br/>可收获: ${entity.berryCount}`;
   } else if (kind === "ore") {
-    ui.inspector.innerHTML = `矿脉节点<br/>储量: ${entity.amount}`;
+    if (ui.inspector) ui.inspector.innerHTML = `矿脉节点<br/>储量: ${entity.amount}`;
   } else if (kind === "house") {
-    ui.inspector.innerHTML = `房屋<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
+    if (ui.inspector) ui.inspector.innerHTML = `房屋<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
   } else if (kind === "building") {
     const label = BUILDING_TYPES[entity.type]?.label || entity.type;
     const stateLabel = entity.isComplete ? '完成' : `建造中 ${entity.progress.toFixed(0)}%`;
-    ui.inspector.innerHTML = `${label}<br/>状态: ${stateLabel}<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
+    if (ui.inspector) ui.inspector.innerHTML = `${label}<br/>状态: ${stateLabel}<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
   } else {
-    // Handle case where x or z might be undefined
     if (x !== undefined && z !== undefined && state.map[z] && state.map[z][x]) {
-      ui.inspector.innerHTML = `地块: ${state.map[z][x].type}<br/>坐标: (${x},${z})`;
+      if (ui.inspector) ui.inspector.innerHTML = `地块: ${state.map[z][x].type}<br/>坐标: (${x},${z})`;
     } else {
-      ui.inspector.innerHTML = "未知对象";
+      if (ui.inspector) ui.inspector.innerHTML = "未知对象";
     }
   }
 }
