@@ -682,46 +682,55 @@ function drawMinimap() {
 }
 
 function renderUI() {
-  // If UIManager is available, use it for some updates
+  // If UIManager is available, use it for updates
   if (state.uiManager) {
-    // UIManager handles its own updates in tick()
+    // UIManager handles its own updates via updateAll(), updatePawns(), updateTasks()
+    state.uiManager.updateAll();
+    state.uiManager.updatePawns();
+    state.uiManager.updateTasks();
   } else {
-    // Legacy UI rendering
-    ui.resourceGroup.innerHTML = Object.entries(state.resources)
-      .map(([k, v]) => `<div class="resource">${k.toUpperCase()}: ${Math.floor(v)}</div>`)
-      .join("");
+    // Legacy UI rendering (fallback if UIManager not available)
+    if (ui.resourceGroup) {
+      ui.resourceGroup.innerHTML = Object.entries(state.resources)
+        .map(([k, v]) => `<div class="resource">${k.toUpperCase()}: ${Math.floor(v)}</div>`)
+        .join("");
+    }
 
-    ui.pawnList.innerHTML = state.pawns
-      .map(
-        (p) =>
-          `<div class="card"><b>${p.name}</b><br/>HP: ${p.hp} | 饥饿: ${p.hunger.toFixed(0)}<br/>当前: ${
-            p.task ? labelTask(p.task.type) : "空闲"
-          }</div>`
-      )
-      .join("");
+    if (ui.pawnList) {
+      ui.pawnList.innerHTML = state.pawns
+        .map(
+          (p) =>
+            `<div class="card"><b>${p.name}</b><br/>HP: ${p.hp} | 饥饿: ${p.hunger.toFixed(0)}<br/>当前: ${
+              p.task ? labelTask(p.task.type) : "空闲"
+            }</div>`
+        )
+        .join("");
+    }
+
+    // Update clock display
+    if (state.timeSystem && typeof updateClockDisplay === 'function') {
+      updateClockDisplay();
+    }
+
+    // Update task list from TaskSystem
+    if (ui.taskList) {
+      const tasks = state.taskSystem ? state.taskSystem.tasks : state.tasks;
+      ui.taskList.innerHTML = tasks
+        .filter(t => t.status !== "completed" && t.status !== "cancelled")
+        .map((t) => `<div class="card">${labelTask(t.type)} @(${t.x},${t.z})<br/>状态: ${t.status}</div>`)
+        .join("");
+    }
+
+    if (ui.eventLog) {
+      ui.eventLog.innerHTML = state.logs.map((l) => `<div class="log-line">${l}</div>`).join("");
+    }
+
+    if (ui.modeTip) {
+      ui.modeTip.textContent = MODE_TIPS[state.selectedMode];
+    }
   }
 
-  // Always update these legacy UI elements
-  ui.resourceGroup.innerHTML = Object.entries(state.resources)
-    .map(([k, v]) => `<div class="resource">${k.toUpperCase()}: ${Math.floor(v)}</div>`)
-    .join("");
-
-  // Update clock display
-  if (state.timeSystem) {
-    updateClockDisplay();
-  }
-
-  // Update task list from TaskSystem
-  const tasks = state.taskSystem ? state.taskSystem.tasks : state.tasks;
-  ui.taskList.innerHTML = tasks
-    .filter(t => t.status !== "completed" && t.status !== "cancelled")
-    .map((t) => `<div class="card">${labelTask(t.type)} @(${t.x},${t.z})<br/>状态: ${t.status}</div>`)
-    .join("");
-
-  ui.eventLog.innerHTML = state.logs.map((l) => `<div class="log-line">${l}</div>`).join("");
-
-  ui.modeTip.textContent = MODE_TIPS[state.selectedMode];
-
+  // Minimap is still rendered via old method
   drawMinimap();
 }
 
@@ -950,29 +959,8 @@ function initSystems() {
 
   console.log("Systems initialized");
 
-  // Time controls (must be after systems are initialized)
-  const pauseBtn = document.getElementById('pause-btn');
-  const speedBtn = document.getElementById('speed-btn');
-  const clockDisplay = document.getElementById('game-clock');
-  const dayDisplay = document.getElementById('day-number');
-
-  pauseBtn.addEventListener('click', () => {
-    const paused = state.timeSystem.togglePause();
-    document.getElementById('pause-icon').textContent = paused ? '▶️' : '⏸️';
-    pauseBtn.classList.toggle('paused', paused);
-  });
-
-  speedBtn.addEventListener('click', () => {
-    const newSpeed = state.timeSystem.cycleSpeed();
-    document.getElementById('speed-display').textContent =
-      newSpeed === 0 ? '⏸️' : `▶️ ${newSpeed}x`;
-  });
-
-  // Update clock display
-  window.updateClockDisplay = function() {
-    clockDisplay.textContent = state.timeSystem.getTimeString();
-    dayDisplay.textContent = state.timeSystem.day;
-  };
+  // Time controls are now handled by UIManager/TopBar component
+  // The old DOM-based controls have been removed
 }
 
 function tick(delta) {

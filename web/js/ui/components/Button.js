@@ -32,7 +32,7 @@ export class Button extends BaseComponent {
     } = this.props;
 
     // 基础类
-    const baseClasses = 'inline-flex items-center justify-center gap-2 rounded-lg font-medium backdrop-blur-xs transition-all border';
+    const baseClasses = 'inline-flex items-center justify-center gap-2 rounded-lg font-medium backdrop-blur-xs transition-all border pointer-events-auto cursor-pointer';
 
     // Focus styles for accessibility
     const focusClass = 'focus-visible:ring-2 focus-visible:ring-game-accent focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none';
