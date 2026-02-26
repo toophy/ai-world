@@ -99,3 +99,18 @@ tools/brpctl apply-patch ./patch.json
 ```
 
 See `docs/skills/brpctl_skill.md` for the skill sheet and additional examples.
+
+## Colony simulation demo (RimWorld-like single scene)
+
+This repo now includes a console-playable single-scene colony simulation with:
+
+- A rich HUD-like text UI panel.
+- Automated task dispatch and prioritization.
+- Autonomous pawn movement.
+- Berry harvesting and stockpile delivery loops.
+
+Run it with:
+
+```bash
+cargo run
+```
