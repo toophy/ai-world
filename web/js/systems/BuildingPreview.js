@@ -17,9 +17,19 @@ export class BuildingPreview {
     this.createMeshes();
   }
 
+  /**
+   * Get the rotated dimensions of the building based on current orientation
+   * @returns {Object} Object with width and height properties
+   */
+  getRotatedDimensions() {
+    return {
+      width: this.orientation % 2 === 0 ? this.config.width : this.config.height,
+      height: this.orientation % 2 === 0 ? this.config.height : this.config.width
+    };
+  }
+
   createMeshes() {
-    const w = this.orientation % 2 === 0 ? this.config.width : this.config.height;
-    const h = this.orientation % 2 === 0 ? this.config.height : this.config.width;
+    const { width: w, height: h } = this.getRotatedDimensions();
 
     // Create semi-transparent preview mesh
     const geometry = new THREE.BoxGeometry(w * TILE_SIZE, 1, h * TILE_SIZE);
@@ -54,13 +64,18 @@ export class BuildingPreview {
   }
 
   updatePosition(gridPos, isValid) {
+    // Null/undefined check - hide preview when no position is provided
+    if (!gridPos) {
+      this.hide();
+      return;
+    }
+
     // Store validity state
     this.isValid = isValid;
     this.currentPosition = gridPos;
 
     // Get actual width/height based on orientation
-    const w = this.orientation % 2 === 0 ? this.config.width : this.config.height;
-    const h = this.orientation % 2 === 0 ? this.config.height : this.config.width;
+    const { width: w, height: h } = this.getRotatedDimensions();
 
     // Calculate center position for multi-tile buildings
     // The gridPos represents the top-left corner of the building footprint
@@ -78,6 +93,25 @@ export class BuildingPreview {
     // Update outline color based on validity
     const outlineColor = isValid ? 0x00ff00 : 0xff0000;
     this.outlineMesh.material.color.setHex(outlineColor);
+  }
+
+  /**
+   * Hide the preview by moving it below ground
+   */
+  hide() {
+    if (this.previewMesh && this.outlineMesh) {
+      this.previewMesh.position.set(0, -10, 0);
+      this.outlineMesh.position.set(0, -10, 0);
+    }
+  }
+
+  /**
+   * Apply rotation to both preview and outline meshes
+   */
+  applyRotation() {
+    const angle = this.orientation * Math.PI / 2;
+    this.previewMesh.rotation.y = angle;
+    this.outlineMesh.rotation.y = angle;
   }
 
   rotate() {
