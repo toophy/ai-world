@@ -38,6 +38,56 @@ export const TASK_LABELS = {
   attack: "攻击",
 };
 
+// Building types configuration
+export const BUILDING_TYPES = {
+  wall: {
+    width: 1, height: 1,
+    resources: { wood: 3 },
+    label: "墙壁",
+    color: 0x8b7355,
+    walkable: false,
+  },
+  door: {
+    width: 1, height: 1,
+    resources: { wood: 5 },
+    label: "门",
+    color: 0x6b8e23,
+    walkable: true,
+    open: false,
+  },
+  bed: {
+    width: 1, height: 1,
+    resources: { wood: 8 },
+    label: "床铺",
+    color: 0xdeb887,
+    walkable: false,
+    restores: "energy",
+  },
+  storage: {
+    width: 1, height: 1,
+    resources: { wood: 12 },
+    label: "储物箱",
+    color: 0x654321,
+    walkable: false,
+    capacity: 500,
+  },
+  workbench: {
+    width: 2, height: 1,
+    resources: { wood: 20, ore: 5 },
+    label: "工作台",
+    color: 0xcd853f,
+    walkable: false,
+  },
+  medical_bed: {
+    width: 1, height: 1,
+    resources: { wood: 15 },
+    label: "医务床",
+    color: 0xffe4e1,
+    walkable: false,
+    restores: "hp",
+  },
+};
+
 // Mode tips for UI
 export const MODE_TIPS = {
   inspect: "检视模式：点击任何地块/单位查看信息。",
