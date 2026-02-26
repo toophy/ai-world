@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { TILE_SIZE, MAP_SIZE, HALF } from '../config.js';
 
 // Convert grid coordinates to world coordinates (returns THREE.Vector3)
