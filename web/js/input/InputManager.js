@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { SelectionHandler } from './SelectionHandler.js';
 import { ModeHandler } from './ModeHandler.js';
+import { BuildingPreview } from '../systems/BuildingPreview.js';
 
 export class InputManager {
-  constructor(canvas, camera, raycaster, groundPlane, state, taskSystem, pathSystem, uiManager) {
+  constructor(canvas, camera, raycaster, groundPlane, state, taskSystem, pathSystem, uiManager, scene) {
     // Validate required parameters
     if (!canvas || !camera || !raycaster || !groundPlane || !state) {
       throw new Error('InputManager requires canvas, camera, raycaster, groundPlane, and state');
@@ -15,9 +16,13 @@ export class InputManager {
     this.groundPlane = groundPlane;
     this.state = state;
     this.uiManager = uiManager;
+    this.scene = scene;
 
     this.selectionHandler = new SelectionHandler(camera, raycaster, groundPlane);
     this.modeHandler = new ModeHandler(state, taskSystem, pathSystem);
+
+    // Building preview system
+    this.buildingPreview = null;
 
     // Store handler references for cleanup
     this._boundHandlers = {
@@ -106,6 +111,9 @@ export class InputManager {
     // Clean up handlers
     this._boundHandlers = null;
 
+    // Dispose of building preview if active
+    this.endBuildingPreview();
+
     // Dispose of selection handler if it has a dispose method
     if (this.selectionHandler && typeof this.selectionHandler.dispose === 'function') {
       this.selectionHandler.dispose();
@@ -155,5 +163,34 @@ export class InputManager {
   togglePause() {
     // TODO: Implement pause
     console.log('Toggle pause');
+  }
+
+  /**
+   * Start building preview for the specified building type
+   * @param {string} buildingType - The type of building to preview
+   */
+  startBuildingPreview(buildingType) {
+    if (!this.scene) {
+      console.error('Scene not available for building preview');
+      return;
+    }
+
+    // Clean up any existing preview
+    this.endBuildingPreview();
+
+    // Create new preview
+    this.buildingPreview = new BuildingPreview(this.scene, buildingType);
+    console.log(`Building preview started for: ${buildingType}`);
+  }
+
+  /**
+   * End the current building preview and clean up resources
+   */
+  endBuildingPreview() {
+    if (this.buildingPreview) {
+      this.buildingPreview.destroy();
+      this.buildingPreview = null;
+      console.log('Building preview ended');
+    }
   }
 }

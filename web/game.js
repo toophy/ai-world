@@ -845,7 +845,7 @@ function initSystems() {
   state.cameraFollow = new CameraFollow(camera);
   state.taskMarker = new TaskMarker(scene, state.taskSystem);
   state.uiManager = new UIManager(state, state.taskSystem);
-  state.inputManager = new InputManager(canvas, camera, raycaster, groundPlane, state, state.taskSystem, pathSystem, state.uiManager);
+  state.inputManager = new InputManager(canvas, camera, raycaster, groundPlane, state, state.taskSystem, pathSystem, state.uiManager, scene);
 
   // Sync initial state
   state.timeSystem.gameSpeed = state.gameSpeed;
