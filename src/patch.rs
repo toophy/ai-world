@@ -285,10 +285,10 @@ fn apply_op(schedule: &mut ScheduleAsset, op: &PatchOp, diagnostics: &mut Vec<Di
                 ));
                 return;
             }
-            let Some(phase) = schedule
+            let Some(phase_idx) = schedule
                 .phases
-                .iter_mut()
-                .find(|phase| phase.phase_id == *phase_id)
+                .iter()
+                .position(|phase| phase.phase_id == *phase_id)
             else {
                 diagnostics.push(diagnostic_with_op(
                     "INVALID_REFERENCE",
@@ -300,6 +300,7 @@ fn apply_op(schedule: &mut ScheduleAsset, op: &PatchOp, diagnostics: &mut Vec<Di
             for other in &mut schedule.phases {
                 other.nodes.retain(|id| id != node_id);
             }
+            let phase = &mut schedule.phases[phase_idx];
             let insert_pos = (*position).min(phase.nodes.len());
             phase.nodes.insert(insert_pos, node_id.clone());
         }

@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RimWorld 风格单场景原型</title>
+  <style>
+    :root {
+      --bg: #1a1d22;
+      --panel: #252a31;
+      --panel-2: #2d333d;
+      --text: #e6edf7;
+      --muted: #97a2b6;
+      --accent: #73d7ff;
+      --ok: #8fe388;
+      --warn: #ffd36f;
+      --danger: #ff8d8d;
+      --berry: #cf59b2;
+      --grass: #2f6c42;
+      --soil: #5e4a35;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top, #20252c, #171a1f 60%);
+      color: var(--text);
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 300px 1fr 320px;
+      overflow: hidden;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, var(--panel), #1f242b);
+      border-right: 1px solid #3a424f;
+      padding: 14px;
+      overflow-y: auto;
+    }
+
+    .right {
+      border-left: 1px solid #3a424f;
+      border-right: none;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 10px;
+      font-weight: 600;
+    }
+
+    h1 { font-size: 18px; color: var(--accent); }
+    h2 { font-size: 15px; margin-top: 16px; }
+    h3 { font-size: 13px; color: var(--muted); }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .card {
+      background: var(--panel-2);
+      border: 1px solid #3a4452;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .label { font-size: 12px; color: var(--muted); }
+    .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    button {
+      background: #35404f;
+      color: var(--text);
+      border: 1px solid #50607a;
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      transition: all .15s ease;
+      font-size: 13px;
+    }
+    button:hover { background: #3f4d62; }
+    button:active { transform: scale(.98); }
+
+    #worldWrap {
+      position: relative;
+      background: #12161b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #world {
+      border: 1px solid #3a4452;
+      border-radius: 10px;
+      background: #243926;
+      box-shadow: 0 0 20px #0008;
+    }
+
+    .legend {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      background: #10141bca;
+      border: 1px solid #3a4452;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      display: flex;
+      gap: 10px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .task, .pawn {
+      border: 1px solid #3a4452;
+      background: #2a313a;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 12px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+
+    .idle { background: #4a5568; }
+    .moving { background: #3f78d1; }
+    .working { background: #3a9f57; }
+    .queued { background: #7058b8; }
+
+    .log {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 11px;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-line;
+      background: #131821;
+    }
+  </style>
+</head>
+<body>
+  <aside class="panel">
+    <h1>殖民地控制台</h1>
+    <div class="stat-grid">
+      <div class="card"><div class="label">浆果库存</div><div id="berryStock" class="value">0</div></div>
+      <div class="card"><div class="label">已完成任务</div><div id="doneTasks" class="value">0</div></div>
+      <div class="card"><div class="label">待派发任务</div><div id="queuedTasks" class="value">0</div></div>
+      <div class="card"><div class="label">活跃小人</div><div id="pawnCount" class="value">0</div></div>
+    </div>
+
+    <h2>指挥动作</h2>
+    <div class="actions">
+      <button id="addGather">追加采集任务</button>
+      <button id="spawnBerries">刷新浆果丛</button>
+      <button id="addPawn">新增小人</button>
+      <button id="toggleSim">暂停</button>
+    </div>
+
+    <h2>任务调度器</h2>
+    <ul id="taskList"></ul>
+  </aside>
+
+  <main id="worldWrap">
+    <canvas id="world" width="980" height="640"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:#cf59b2"></i>浆果丛</span>
+      <span><i class="dot" style="background:#73d7ff"></i>小人</span>
+      <span><i class="dot" style="background:#f7dc6f"></i>目标</span>
+    </div>
+  </main>
+
+  <aside class="panel right">
+    <h1>殖民者状态</h1>
+    <ul id="pawnList"></ul>
+
+    <h2>系统日志</h2>
+    <div id="log" class="card log"></div>
+  </aside>
+
+  <script>
+    const canvas = document.getElementById('world');
+    const ctx = canvas.getContext('2d');
+
+    const state = {
+      running: true,
+      berriesStock: 0,
+      doneTasks: 0,
+      nextTaskId: 1,
+      nextPawnId: 1,
+      tasks: [],
+      pawns: [],
+      berryBushes: [],
+      structures: [{x: 460, y: 280, w: 80, h: 80, name: '仓库'}],
+      lastDispatchAt: 0,
+    };
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function log(text) {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      logEl.textContent = `[${time}] ${text}\n` + logEl.textContent;
+      logEl.textContent = logEl.textContent.split('\n').slice(0, 45).join('\n');
+    }
+
+    function spawnBerryBushes(count = 6) {
+      for (let i = 0; i < count; i++) {
+        state.berryBushes.push({
+          id: `b${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+          x: rand(80, canvas.width - 80),
+          y: rand(80, canvas.height - 80),
+          amount: Math.floor(rand(5, 13)),
+        });
+      }
+      log(`生成了 ${count} 片浆果丛`);
+    }
+
+    function addPawn() {
+      const id = state.nextPawnId++;
+      const pawn = {
+        id,
+        name: `殖民者-${id}`,
+        x: rand(430, 560),
+        y: rand(260, 380),
+        speed: rand(45, 70),
+        carrying: 0,
+        mood: Math.floor(rand(55, 97)),
+        hunger: Math.floor(rand(10, 35)),
+        state: 'idle',
+        taskId: null,
+        target: null,
+      };
+      state.pawns.push(pawn);
+      log(`${pawn.name} 加入殖民地`);
+    }
+
+    function queueGatherTask(force = false) {
+      const available = state.berryBushes.some(b => b.amount > 0);
+      if (!available && !force) {
+        log('没有可采集浆果，任务未创建');
+        return;
+      }
+
+      const task = {
+        id: state.nextTaskId++,
+        type: 'gather_berries',
+        title: '采集浆果',
+        status: 'queued',
+        priority: Math.floor(rand(1, 4)),
+        targetBushId: null,
+        assignedPawnId: null,
+      };
+      state.tasks.push(task);
+      log(`任务 #${task.id} 已入队（优先级 ${task.priority}）`);
+    }
+
+    function findNearestBush(pawn) {
+      const candidates = state.berryBushes.filter(b => b.amount > 0);
+      if (!candidates.length) return null;
+      candidates.sort((a, b) => distance(pawn, a) - distance(pawn, b));
+      return candidates[0];
+    }
+
+    function dispatchTasks(now) {
+      if (now - state.lastDispatchAt < 300) return;
+      state.lastDispatchAt = now;
+
+      const queued = state.tasks
+        .filter(t => t.status === 'queued')
+        .sort((a, b) => b.priority - a.priority || a.id - b.id);
+
+      for (const task of queued) {
+        const idlePawn = state.pawns.find(p => p.state === 'idle');
+        if (!idlePawn) break;
+
+        const bush = findNearestBush(idlePawn);
+        if (!bush) continue;
+
+        task.status = 'assigned';
+        task.assignedPawnId = idlePawn.id;
+        task.targetBushId = bush.id;
+
+        idlePawn.state = 'moving';
+        idlePawn.taskId = task.id;
+        idlePawn.target = {x: bush.x, y: bush.y, bushId: bush.id};
+
+        log(`调度器: ${idlePawn.name} -> 任务 #${task.id}（浆果 ${bush.amount}）`);
+      }
+    }
+
+    function updatePawns(dt) {
+      for (const pawn of state.pawns) {
+        pawn.hunger = Math.min(100, pawn.hunger + dt * 0.4);
+        pawn.mood = Math.max(0, pawn.mood - dt * 0.1);
+
+        if (pawn.state === 'moving' && pawn.target) {
+          const dx = pawn.target.x - pawn.x;
+          const dy = pawn.target.y - pawn.y;
+          const d = Math.hypot(dx, dy);
+          if (d < 3) {
+            pawn.state = 'working';
+          } else {
+            const step = Math.min(d, pawn.speed * dt);
+            pawn.x += dx / d * step;
+            pawn.y += dy / d * step;
+          }
+        }
+
+        if (pawn.state === 'working') {
+          const task = state.tasks.find(t => t.id === pawn.taskId);
+          const bush = state.berryBushes.find(b => b.id === task?.targetBushId);
+
+          if (!task || !bush || bush.amount <= 0) {
+            if (task) task.status = 'cancelled';
+            pawn.state = 'idle';
+            pawn.taskId = null;
+            pawn.target = null;
+            continue;
+          }
+
+          const gathered = Math.min(bush.amount, Math.ceil(rand(1, 2)));
+          bush.amount -= gathered;
+          pawn.carrying += gathered;
+          state.berriesStock += gathered;
+
+          task.status = 'done';
+          state.doneTasks += 1;
+
+          pawn.state = 'idle';
+          pawn.taskId = null;
+          pawn.target = null;
+          pawn.hunger = Math.max(0, pawn.hunger - 2);
+          pawn.mood = Math.min(100, pawn.mood + 1);
+
+          log(`${pawn.name} 完成任务 #${task.id}，采集 ${gathered} 单位浆果`);
+        }
+      }
+
+      state.tasks = state.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
+    }
+
+    function renderWorld() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < canvas.height; y += 40) {
+        for (let x = 0; x < canvas.width; x += 40) {
+          ctx.fillStyle = (x / 40 + y / 40) % 2 === 0 ? '#356f47' : '#2f6540';
+          ctx.fillRect(x, y, 40, 40);
+        }
+      }
+
+      ctx.fillStyle = '#7b6543';
+      for (const s of state.structures) {
+        ctx.fillRect(s.x, s.y, s.w, s.h);
+        ctx.fillStyle = '#d9c7a2';
+        ctx.fillText(s.name, s.x + 14, s.y + s.h / 2);
+        ctx.fillStyle = '#7b6543';
+      }
+
+      for (const b of state.berryBushes) {
+        if (b.amount <= 0) continue;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 9 + b.amount * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(207,89,178,0.9)';
+        ctx.fill();
+
+        ctx.fillStyle = '#ffe8fb';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(b.amount, b.x - 3, b.y + 3);
+      }
+
+      for (const p of state.pawns) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#73d7ff';
+        ctx.fill();
+
+        if (p.target) {
+          ctx.strokeStyle = '#f7dc6f';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.target.x, p.target.y);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#0f1720';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(p.id, p.x - 3, p.y + 3);
+      }
+    }
+
+    function renderUI() {
+      document.getElementById('berryStock').textContent = state.berriesStock;
+      document.getElementById('doneTasks').textContent = state.doneTasks;
+      document.getElementById('queuedTasks').textContent = state.tasks.length;
+      document.getElementById('pawnCount').textContent = state.pawns.length;
+
+      const taskList = document.getElementById('taskList');
+      taskList.innerHTML = '';
+      state.tasks
+        .sort((a, b) => b.priority - a.priority || a.id - b.id)
+        .slice(0, 14)
+        .forEach(task => {
+          const li = document.createElement('li');
+          li.className = 'task';
+          li.innerHTML = `<strong>#${task.id} ${task.title}</strong>
+            <span class="pill ${task.status === 'queued' ? 'queued' : 'moving'}">${task.status}</span>
+            <div>优先级：${task.priority}</div>
+            <div>分配：${task.assignedPawnId ? '殖民者-' + task.assignedPawnId : '待分配'}</div>`;
+          taskList.appendChild(li);
+        });
+
+      const pawnList = document.getElementById('pawnList');
+      pawnList.innerHTML = '';
+      state.pawns.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'pawn';
+        li.innerHTML = `<strong>${p.name}</strong>
+          <span class="pill ${p.state}">${p.state}</span>
+          <div>心情：${p.mood.toFixed(0)} | 饥饿：${p.hunger.toFixed(0)}</div>
+          <div>携带浆果：${p.carrying}</div>
+          <div>当前任务：${p.taskId ? '#' + p.taskId : '无'}</div>`;
+        pawnList.appendChild(li);
+      });
+    }
+
+    let prev = performance.now();
+    function tick(now) {
+      const dt = Math.min((now - prev) / 1000, 0.05);
+      prev = now;
+
+      if (state.running) {
+        if (Math.random() < 0.025) queueGatherTask();
+        if (Math.random() < 0.006) spawnBerryBushes(1);
+
+        dispatchTasks(now);
+        updatePawns(dt);
+      }
+
+      renderWorld();
+      renderUI();
+      requestAnimationFrame(tick);
+    }
+
+    document.getElementById('addGather').onclick = () => queueGatherTask(true);
+    document.getElementById('spawnBerries').onclick = () => spawnBerryBushes(5);
+    document.getElementById('addPawn').onclick = () => addPawn();
+    document.getElementById('toggleSim').onclick = (e) => {
+      state.running = !state.running;
+      e.target.textContent = state.running ? '暂停' : '继续';
+      log(state.running ? '模拟继续运行' : '模拟已暂停');
+    };
+
+    spawnBerryBushes(8);
+    for (let i = 0; i < 5; i++) addPawn();
+    for (let i = 0; i < 6; i++) queueGatherTask(true);
+    log('自动化任务派发系统已启动');
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
