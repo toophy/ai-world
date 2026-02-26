@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { TILE_SIZE, HALF } from '../config.js';
 
 export class TaskMarker {

@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { SelectionHandler } from './SelectionHandler.js';
 import { ModeHandler } from './ModeHandler.js';
 

@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { worldToGrid, isValidGrid } from '../utils/geometry.js';
 
 export class SelectionHandler {
