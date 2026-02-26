@@ -88,7 +88,48 @@ body,
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+}
+
+.clock-btn {
+  background: rgba(76, 103, 156, 0.4);
+  border: 1px solid rgba(134, 170, 230, 0.5);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  min-width: 40px;
+  transition: all 0.15s;
+}
+
+.clock-btn:hover {
+  background: rgba(109, 153, 236, 0.5);
+}
+
+.clock-btn.paused {
+  background: rgba(232, 106, 124, 0.4);
+  border-color: rgba(232, 106, 124, 0.6);
+}
+
+.game-clock {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+  min-width: 50px;
+  text-align: center;
+}
+
+.day-indicator {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+#day-number {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+#speed-display {
+  font-size: 13px;
 }
 
 button {

@@ -14,11 +14,14 @@
         <div class="logo">Frontier Colony</div>
         <div class="resource-group" id="resource-group"></div>
         <div class="clock-group">
-          <span id="day-label">第 1 天 06:00</span>
-          <button data-speed="0.5">0.5x</button>
-          <button data-speed="1" class="active">1x</button>
-          <button data-speed="2">2x</button>
-          <button data-speed="3">3x</button>
+          <button id="pause-btn" class="clock-btn" title="暂停 (Space)">
+            <span id="pause-icon">⏸️</span>
+          </button>
+          <span id="game-clock" class="game-clock">06:00</span>
+          <span class="day-indicator">Day <span id="day-number">1</span></span>
+          <button id="speed-btn" class="clock-btn" title="游戏速度">
+            <span id="speed-display">▶️ 1x</span>
+          </button>
         </div>
       </header>
 

@@ -37,7 +37,6 @@ const state = {
 
 const ui = {
   resourceGroup: document.getElementById("resource-group"),
-  dayLabel: document.getElementById("day-label"),
   pawnList: document.getElementById("pawn-list"),
   taskList: document.getElementById("task-list"),
   inspector: document.getElementById("inspector"),
@@ -644,8 +643,10 @@ function renderUI() {
     .map(([k, v]) => `<div class="resource">${k.toUpperCase()}: ${Math.floor(v)}</div>`)
     .join("");
 
-  const h = String(Math.floor(state.hour) % 24).padStart(2, "0");
-  ui.dayLabel.textContent = `第 ${state.day} 天 ${h}:00`;
+  // Update clock display
+  if (state.timeSystem) {
+    updateClockDisplay();
+  }
 
   // Update task list from TaskSystem
   const tasks = state.taskSystem ? state.taskSystem.tasks : state.tasks;
@@ -772,19 +773,6 @@ canvas.addEventListener("click", (event) => {
 for (const btn of document.querySelectorAll(".bottom-bar button")) {
   btn.addEventListener("click", () => setMode(btn.dataset.mode));
 }
-for (const btn of document.querySelectorAll(".clock-group button")) {
-  btn.addEventListener("click", () => {
-    const speed = Number(btn.dataset.speed);
-    if (state.timeSystem) {
-      state.timeSystem.setSpeed(speed);
-      state.gameSpeed = speed;
-    } else {
-      state.gameSpeed = speed;
-    }
-    for (const b of document.querySelectorAll(".clock-group button")) b.classList.remove("active");
-    btn.classList.add("active");
-  });
-}
 
 window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -883,6 +871,30 @@ function initSystems() {
   }
 
   console.log("Systems initialized");
+
+  // Time controls (must be after systems are initialized)
+  const pauseBtn = document.getElementById('pause-btn');
+  const speedBtn = document.getElementById('speed-btn');
+  const clockDisplay = document.getElementById('game-clock');
+  const dayDisplay = document.getElementById('day-number');
+
+  pauseBtn.addEventListener('click', () => {
+    const paused = state.timeSystem.togglePause();
+    document.getElementById('pause-icon').textContent = paused ? '▶️' : '⏸️';
+    pauseBtn.classList.toggle('paused', paused);
+  });
+
+  speedBtn.addEventListener('click', () => {
+    const newSpeed = state.timeSystem.cycleSpeed();
+    document.getElementById('speed-display').textContent =
+      newSpeed === 0 ? '⏸️' : `▶️ ${newSpeed}x`;
+  });
+
+  // Update clock display
+  window.updateClockDisplay = function() {
+    clockDisplay.textContent = state.timeSystem.getTimeString();
+    dayDisplay.textContent = state.timeSystem.day;
+  };
 }
 
 function tick(delta) {
