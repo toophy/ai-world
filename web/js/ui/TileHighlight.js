@@ -15,32 +15,17 @@ export class TileHighlight {
   createCornerHighlight() {
     const group = new THREE.Group();
 
-    // Create a simple rectangle outline for the tile
-    const size = 1; // TILE_SIZE is 1 unit
-    const height = 0.1; // Slightly above ground
-
-    const shape = new THREE.Shape();
-    shape.moveTo(-0.5, -0.5);
-    shape.lineTo(0.5, -0.5);
-    shape.lineTo(0.5, 0.5);
-    shape.lineTo(-0.5, 0.5);
-    shape.lineTo(-0.5, -0.5);
-
-    const geometry = new THREE.EdgesGeometry(
-      new THREE.PlaneGeometry(size, size),
-      15 // threshold angle
-    );
-
-    // We want just the outline, so use LineSegments
+    // Create a rectangle outline that matches the tile size (TILE_SIZE = 2)
+    // The border should cover exactly one tile
     const points = [
-      new THREE.Vector3(-0.5, 0, -0.5),
-      new THREE.Vector3(0.5, 0, -0.5),
-      new THREE.Vector3(0.5, 0, 0.5),
-      new THREE.Vector3(-0.5, 0, 0.5),
-      new THREE.Vector3(-0.5, 0, -0.5),
+      new THREE.Vector3(-1, 0, -1),  // Top-left corner
+      new THREE.Vector3(1, 0, -1),   // Top-right corner
+      new THREE.Vector3(1, 0, 1),    // Bottom-right corner
+      new THREE.Vector3(-1, 0, 1),   // Bottom-left corner
+      new THREE.Vector3(-1, 0, -1),  // Back to start (close the loop)
     ];
 
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const material = new THREE.LineBasicMaterial({
       color: 0x00ff00, // Green for selected
       transparent: true,
@@ -48,8 +33,8 @@ export class TileHighlight {
       depthTest: false,
     });
 
-    const line = new THREE.Line(lineGeometry, material);
-    line.position.y = 0.05;
+    const line = new THREE.Line(geometry, material);
+    line.position.y = 0.05; // Slightly above ground
     group.add(line);
 
     this.scene.add(group);
