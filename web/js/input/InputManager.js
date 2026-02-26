@@ -61,7 +61,14 @@ export class InputManager {
   _handlePointerDown(e) {
     if (e.button === 0) { // Left click
       this.selectionHandler.onStart({ x: e.clientX, y: e.clientY });
-    } else if (e.button === 2) { // Right click - cancel tasks
+    } else if (e.button === 2) { // Right click
+      // Check if we're in build mode with an active preview
+      if (this.buildingPreview && this.modeHandler?.currentMode === 'build') {
+        // Rotate the building preview
+        this.buildingPreview.rotate();
+        return; // Prevent other right-click behavior
+      }
+      // Otherwise, handle normal right-click behavior (cancel tasks)
       this.handleRightClick(e);
     }
   }
