@@ -40,6 +40,18 @@ export const TASK_LABELS = {
 
 // Building types configuration
 export const BUILDING_TYPES = {
+  house: {
+    width: 1, height: 1,
+    resources: { wood: 8 },
+    label: "房屋",
+    color: 0xa98b68,
+    walkable: false,
+    placementRules: {
+      allowedTerrain: ['grass', 'soil', 'sand', 'rock'],
+      requiresRoof: false,
+      minNeighbors: 0,
+    },
+  },
   wall: {
     width: 1, height: 1,
     resources: { wood: 3 },

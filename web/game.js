@@ -10,6 +10,7 @@ import { CameraFollow } from "./js/systems/CameraFollow.js";
 import { TaskMarker } from "./js/systems/TaskMarker.js";
 import { UIManager } from "./js/ui/UIManager.js";
 import { InputManager } from "./js/input/InputManager.js";
+import { BuildingRenderer } from "./js/systems/BuildingRenderer.js";
 
 const state = {
   gameSpeed: 1,
@@ -33,6 +34,7 @@ const state = {
   taskMarker: null,
   uiManager: null,
   inputManager: null,
+  buildingRenderer: null,
 };
 
 const ui = {
@@ -176,18 +178,23 @@ function addBerryBush(x, z, mature = true) {
 }
 
 function addHouse(x, z) {
-  const pos = gridToWorld(x, z);
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.6, 1.4, 1.6),
-    new THREE.MeshStandardMaterial({ color: 0xa98b68 })
-  );
-  mesh.position.set(pos.x, 0.7, pos.z);
-  mesh.castShadow = true;
-  const house = { id: crypto.randomUUID(), x, z, hp: 100, mesh };
-  mesh.userData = { kind: "house", entity: house };
-  state.houses.push(house);
-  state.buildings.push(house); // Also add to buildings array
-  world.add(mesh);
+  // Create a Building instance for the house (complete immediately)
+  const house = new Building('house', x, z, 0);
+  house.updateProgress(100);
+  house.state = 'complete';
+  house.isComplete = true;
+  house.hp = 100;
+
+  // Legacy compatibility - keep house as a plain object too
+  const houseLegacy = { id: house.id, x, z, hp: 100 };
+  state.houses.push(houseLegacy);
+  state.buildings.push(house);
+
+  // Add to renderer if available
+  if (state.buildingRenderer) {
+    state.buildingRenderer.addBuilding(house);
+  }
+
   state.map[z][x].occupied = true;
 }
 
@@ -413,6 +420,14 @@ function updatePawn(pawn, dt) {
         currentTask.progress = Math.min(100, (pawn.workTimer / workTime) * 100);
       }
 
+      // Update linked building progress for build tasks
+      if (currentTask.buildingId) {
+        const building = state.buildings?.find(b => b.id === currentTask.buildingId);
+        if (building) {
+          building.updateProgress((pawn.workTimer / workTime) * 100);
+        }
+      }
+
       // Task complete
       if (pawn.workTimer >= workTime) {
         completeTask(pawn, currentTask);
@@ -516,18 +531,30 @@ function completeTask(pawn, task) {
     case 'build_storage':
     case 'build_workbench':
     case 'build_house':
-      if (typeof Building !== 'undefined') {
+      // Find the building associated with this task and update its progress
+      if (task.buildingId) {
+        const building = state.buildings?.find(b => b.id === task.buildingId);
+        if (building) {
+          building.updateProgress(100);
+          building.state = 'complete';
+          building.isComplete = true;
+          const buildingLabel = BUILDING_TYPES[building.type]?.label || building.type;
+          logEvent(`${pawn.name} 完成建造: ${buildingLabel}`);
+        }
+      } else {
+        // Fallback for legacy buildings without buildingId
         const buildingType = task.buildingType || task.type.replace('build_', '');
-        // For build_house, use 'house' type
         const actualType = buildingType === 'house' ? 'house' : buildingType;
         if (actualType === 'house') {
           addHouse(task.x, task.z);
           logEvent(`${pawn.name} 完成房屋建造`);
         } else {
           const building = new Building(actualType, task.x, task.z);
+          building.updateProgress(100);
+          building.state = 'complete';
+          building.isComplete = true;
           state.buildings = state.buildings || [];
           state.buildings.push(building);
-          // Mark map cell as occupied
           if (BUILDING_TYPES[actualType] && !BUILDING_TYPES[actualType].walkable) {
             state.map[task.z][task.x].occupied = true;
           }
@@ -677,6 +704,10 @@ function inspectAt(hit) {
     ui.inspector.innerHTML = `矿脉节点<br/>储量: ${entity.amount}`;
   } else if (kind === "house") {
     ui.inspector.innerHTML = `房屋<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
+  } else if (kind === "building") {
+    const label = BUILDING_TYPES[entity.type]?.label || entity.type;
+    const stateLabel = entity.isComplete ? '完成' : `建造中 ${entity.progress.toFixed(0)}%`;
+    ui.inspector.innerHTML = `${label}<br/>状态: ${stateLabel}<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
   } else {
     ui.inspector.innerHTML = `地块: ${state.map[z][x].type}<br/>坐标: (${x},${z})`;
   }
@@ -845,6 +876,7 @@ function initSystems() {
   state.cameraFollow = new CameraFollow(camera);
   state.taskMarker = new TaskMarker(scene, state.taskSystem);
   state.uiManager = new UIManager(state, state.taskSystem);
+  state.buildingRenderer = new BuildingRenderer(scene, state.buildings);
   state.inputManager = new InputManager(canvas, camera, raycaster, groundPlane, state, state.taskSystem, pathSystem, state.uiManager, scene);
 
   // Sync initial state
@@ -937,6 +969,11 @@ function tick(delta) {
   // Update task markers
   if (state.taskMarker) {
     state.taskMarker.update();
+  }
+
+  // Update building visuals (construction progress)
+  if (state.buildingRenderer) {
+    state.buildingRenderer.updateAll();
   }
 
   // Update UI

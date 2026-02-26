@@ -185,6 +185,11 @@ export class InputManager {
     this.state.buildings = this.state.buildings || [];
     this.state.buildings.push(building);
 
+    // Add building to renderer if available
+    if (this.state.buildingRenderer) {
+      this.state.buildingRenderer.addBuilding(building);
+    }
+
     // Create a build task for the building
     const task = new Task(`build_${buildingType}`, gridPos.x, gridPos.z, {
       priority: this.modeHandler.priorityLevel,
