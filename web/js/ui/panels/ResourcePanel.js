@@ -17,15 +17,17 @@ export class ResourcePanel extends BaseComponent {
     this.mountBadges();
   }
 
-  mountBadges() {
-    if (!this.element) return;
-
-    const container = this.querySelector('[data-resource-container]');
-    if (!container) return;
-
+  unmountBadges() {
     // Clear any existing badges
     Object.values(this.badges).forEach(badge => badge.unmount?.());
     this.badges = {};
+  }
+
+  mountBadges() {
+    if (!this.element) return;
+
+    const container = this.element.querySelector('[data-resource-container]');
+    if (!container) return;
 
     // Get current resources
     const resources = this.props.resources || {};
@@ -63,38 +65,30 @@ export class ResourcePanel extends BaseComponent {
   }
 
   /**
-   * Custom update method for efficient updates
-   * Only updates badge values, doesn't remount components
+   * Custom update method - remounts badges when resource values change
+   * Note: Badge.update() does full re-render, so remounting is simpler
    */
   update(newProps) {
+    // Call lifecycle hooks
+    if (!this.shouldUpdate(newProps)) return;
+    this.componentWillUpdate(newProps);
+
+    if (!newProps.resources) return;
+
     const oldResources = this.props.resources || {};
-    const newResources = newProps.resources || {};
+    const newResources = newProps.resources;
 
-    // Update props
+    // Check if any resource value changed
+    const hasChanged = Object.keys(newResources).some(
+      key => (oldResources[key] || 0) !== (newResources[key] || 0)
+    );
+
+    if (!hasChanged) return;
+
+    // Remount badges when values change (Badge.update() does full re-render anyway)
+    this.unmountBadges();
     this.props = { ...this.props, ...newProps };
-
-    // Check if we need to remount (resource types changed)
-    const oldKeys = Object.keys(oldResources).filter(k => oldResources[k] > 0);
-    const newKeys = Object.keys(newResources).filter(k => newResources[k] > 0);
-
-    const keysChanged =
-      oldKeys.length !== newKeys.length ||
-      oldKeys.some(k => !newKeys.includes(k)) ||
-      newKeys.some(k => !oldKeys.includes(k));
-
-    if (keysChanged) {
-      // Resource types changed, need to remount badges
-      this.mountBadges();
-    } else {
-      // Only values changed, update badges efficiently
-      Object.entries(this.badges).forEach(([key, badge]) => {
-        const newValue = newResources[key];
-        if (newValue !== undefined && badge.update) {
-          badge.update({ value: Math.floor(newValue) });
-        }
-      });
-    }
-
+    this.mountBadges();
     this.componentDidUpdate();
   }
 
