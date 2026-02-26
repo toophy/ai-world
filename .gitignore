@@ -28,3 +28,6 @@ web/test-*.html
 web/debug-*.html
 web/final-debug.html
 web/test-building-preview.html
+
+# Worktree directory for isolated development
+.worktrees/
