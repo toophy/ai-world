@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { SelectionHandler } from './SelectionHandler.js';
 import { ModeHandler } from './ModeHandler.js';
 import { BuildingPreview } from '../systems/BuildingPreview.js';
+import { PlacementValidator } from '../systems/PlacementValidator.js';
+import { worldToGrid } from '../utils/geometry.js';
 
 export class InputManager {
   constructor(canvas, camera, raycaster, groundPlane, state, taskSystem, pathSystem, uiManager, scene) {
@@ -63,6 +65,11 @@ export class InputManager {
 
   _handlePointerMove(e) {
     this.selectionHandler.onMove({ x: e.clientX, y: e.clientY });
+
+    // Handle building preview update
+    if (this.buildingPreview) {
+      this._updateBuildingPreview(e);
+    }
   }
 
   _handlePointerUp(e) {
@@ -97,6 +104,49 @@ export class InputManager {
     // Escape - cancel current mode
     if (e.key === 'Escape') {
       this.modeHandler.setMode('inspect');
+    }
+  }
+
+  /**
+   * Update building preview position and validity based on cursor position
+   * @param {PointerEvent} e - The pointer move event
+   */
+  _updateBuildingPreview(e) {
+    if (!this.buildingPreview || !this.groundPlane) {
+      return;
+    }
+
+    // Set up raycaster from mouse position
+    this.raycaster.setFromCamera(
+      new THREE.Vector2(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1
+      ),
+      this.camera
+    );
+
+    // Raycast against ground plane
+    const intersects = this.raycaster.intersectObject(this.groundPlane);
+
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+
+      // Convert world position to grid coordinates
+      const gridPos = worldToGrid(point.x, point.z);
+
+      // Validate placement using PlacementValidator
+      const validationResult = PlacementValidator.validate(
+        gridPos,
+        this.buildingPreview.buildingType,
+        this.buildingPreview.orientation,
+        this.state
+      );
+
+      // Update preview position and validity state
+      this.buildingPreview.updatePosition(gridPos, validationResult.valid);
+    } else {
+      // No ground intersection - hide preview
+      this.buildingPreview.hide();
     }
   }
 
