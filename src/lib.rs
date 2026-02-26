@@ -1,3 +1,4 @@
+pub mod colony;
 pub mod diagnostics;
 pub mod hashing;
 pub mod patch;
