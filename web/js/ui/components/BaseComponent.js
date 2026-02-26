@@ -22,6 +22,12 @@ export class BaseComponent {
   /** 更新前调用，返回false阻止更新 */
   shouldUpdate(newProps) { return true; }
 
+  /** 更新前调用 */
+  componentWillUpdate(newProps) {}
+
+  /** 更新后调用 */
+  componentDidUpdate() {}
+
   /** 卸载时调用 */
   componentWillUnmount() {}
 
@@ -75,25 +81,37 @@ export class BaseComponent {
     if (!oldElement || !oldElement.parentNode) return;
 
     const parent = oldElement.parentNode;
-    this.props = { ...this.props, ...newProps };
 
-    // 清理旧事件
+    // Call new lifecycle hook
+    this.componentWillUpdate(newProps);
+
+    // Clear old events first
     this.unbindEvents();
 
-    this.componentWillMount();
-    const html = this.render();
+    try {
+      const html = this.render();
 
-    if (typeof html === 'string') {
-      const temp = document.createElement('div');
-      temp.innerHTML = html.trim();
-      this.element = temp.firstChild;
-    } else {
-      this.element = html;
-    }
+      // 支持两种方式：字符串模板或直接创建元素
+      if (typeof html === 'string') {
+        const temp = document.createElement('div');
+        temp.innerHTML = html.trim();
+        this.element = temp.firstChild;
+      } else {
+        this.element = html;
+      }
 
-    if (this.element) {
-      parent.replaceChild(this.element, oldElement);
+      if (this.element) {
+        parent.replaceChild(this.element, oldElement);
+        this.bindEvents();
+        this.componentDidUpdate();
+      }
+
+      this.props = { ...this.props, ...newProps };
+    } catch (error) {
+      // Re-bind old events on failure
       this.bindEvents();
+      console.error('Component update failed:', error);
+      throw error;
     }
   }
 
@@ -127,7 +145,7 @@ export class BaseComponent {
    */
   setState(newState) {
     this.state = { ...this.state, ...newState };
-    if (this.element?.parentNode) {
+    if (this.element?.parentNode && this.shouldUpdate(this.props)) {
       this.update(this.props);
     }
   }
