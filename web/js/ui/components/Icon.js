@@ -3,6 +3,9 @@
  * 使用Lucide风格的路径数据
  */
 
+// 安全SVG属性白名单
+const SAFE_ATTRS = ['class', 'id', 'style', 'width', 'height', 'data-icon'];
+
 // 图标路径定义
 const ICON_PATHS = {
   // 建筑图标
@@ -59,6 +62,7 @@ export class Icon {
     const { className = 'w-5 h-5', ...attrs } = this.props;
     const path = ICON_PATHS[this.name] || ICON_PATHS.square;
     const attrString = Object.entries(attrs)
+      .filter(([k]) => SAFE_ATTRS.includes(k))
       .map(([k, v]) => `${k}="${v}"`)
       .join(' ');
 
