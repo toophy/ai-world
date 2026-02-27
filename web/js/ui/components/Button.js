@@ -14,6 +14,19 @@ function escapeHtml(unsafe) {
     .replace(/'/g, "&#039;");
 }
 
+function resolveIconHtml(icon, className = 'w-5 h-5') {
+  if (typeof icon !== 'string' || icon.trim().length === 0) return '';
+
+  const trimmed = icon.trim();
+
+  // 兼容直接传入 SVG 片段（例如 merge 后调用方传的是 renderIcon(...) 的结果）
+  if (trimmed.startsWith('<svg')) {
+    return trimmed;
+  }
+
+  return renderIcon(trimmed, className);
+}
+
 /**
  * Button - 按钮组件
  * 支持多种变体、尺寸、图标和状态
@@ -73,7 +86,8 @@ export class Button extends BaseComponent {
     ].filter(Boolean).join(' ');
 
     // 构建内容 - 逃逸所有动态值以防止XSS
-    const iconHtml = icon ? `<span class="pointer-events-none">${renderIcon(icon)}</span>` : '';
+    const iconMarkup = resolveIconHtml(icon);
+    const iconHtml = iconMarkup ? `<span class="pointer-events-none">${iconMarkup}</span>` : '';
     const labelHtml = label ? `<span class="pointer-events-none">${escapeHtml(label)}</span>` : '';
 
     // Build ARIA attributes for accessibility
