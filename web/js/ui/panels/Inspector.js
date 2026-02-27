@@ -10,7 +10,10 @@ export class Inspector extends BaseComponent {
 
     return `
       <div class="text-sm space-y-2">
-        <div class="font-semibold text-game-text">${entity.name || '殖民者'}</div>
+        <div class="flex items-center justify-between">
+          <div class="font-semibold text-game-text">${entity.name || '殖民者'}</div>
+          <button type="button" class="text-xs px-2 py-1 rounded border border-game-border" data-action="close-pawn-panel">关闭</button>
+        </div>
         <div class="text-xs text-game-text-dim">HP: ${Math.round(entity.hp || 0)} / ${Math.round(entity.maxHp || 100)}</div>
         <div class="text-xs text-game-text-dim">能量: ${Math.round(entity.energy || 0)} / ${Math.round(entity.maxEnergy || 100)}</div>
         <div class="text-xs text-game-text-dim">饥饿: ${Math.round(entity.hunger || 0)} / ${Math.round(entity.maxHunger || 100)}</div>
@@ -39,15 +42,16 @@ export class Inspector extends BaseComponent {
   }
 
   _renderTile(entity) {
-    const related = entity.relatedObjects || [];
+    const marks = entity.surfaceMarks || [];
     return `
       <div class="text-sm space-y-2">
         <div class="font-semibold text-game-text mb-1">地块 ${entity.position || ''}</div>
         <div class="text-xs text-game-text-dim">地形: ${entity.terrain || '未知'}</div>
+        <div class="text-xs text-game-text-dim">山脉: ${entity.hasMountain ? '有' : '无'}</div>
         <div>
-          <div class="text-xs font-semibold text-game-text mb-1">关联对象</div>
+          <div class="text-xs font-semibold text-game-text mb-1">地表痕迹</div>
           <div class="text-xs text-game-text-dim space-y-1">
-            ${related.length ? related.map(item => `<div>- ${item}</div>`).join('') : '<div>无</div>'}
+            ${marks.length ? marks.map(item => `<div>- ${item}</div>`).join('') : '<div>无</div>'}
           </div>
         </div>
       </div>
@@ -57,13 +61,19 @@ export class Inspector extends BaseComponent {
   render() {
     const { entity = null } = this.props;
 
+    if (entity && (entity.type === 'pawn' || entity.skills)) {
+      return `
+        <div class="absolute right-2.5 bottom-[120px] w-[340px] p-3 overflow-y-auto rounded-lg bg-game-panel border border-game-border backdrop-blur-xs shadow-lg pointer-events-auto" data-component="inspector" data-mode="pawn-detail">
+          ${this._renderPawn(entity)}
+        </div>
+      `;
+    }
+
     let content = '';
     if (!entity) {
-      content = '<div class="text-sm text-game-text-dim">点击地图单位或地块查看详情</div>';
+      content = '<div class="text-sm text-game-text-dim">点击地块查看地形与地表信息</div>';
     } else if (entity.type === 'tile') {
       content = this._renderTile(entity);
-    } else if (entity.type === 'pawn' || entity.skills) {
-      content = this._renderPawn(entity);
     } else if (entity.type === 'berry') {
       content = `<div class="text-sm text-game-text-dim">浆果灌木：可收获 ${entity.berryCount || 0}</div>`;
     } else if (entity.type === 'ore') {
@@ -84,10 +94,22 @@ export class Inspector extends BaseComponent {
     }
 
     return `
-      <div class="absolute right-2.5 w-[320px] p-3 overflow-y-auto rounded-lg bg-game-panel border border-game-border backdrop-blur-xs shadow-lg pointer-events-auto" data-component="inspector">
+      <div class="absolute right-2.5 top-[78px] w-[340px] p-3 overflow-y-auto rounded-lg bg-game-panel border border-game-border backdrop-blur-xs shadow-lg pointer-events-auto" data-component="inspector" data-mode="tile-inspector">
         <h3 class="text-sm font-semibold text-game-accent mb-2 pb-1 border-b border-game-border">检视器</h3>
         ${content}
       </div>
     `;
+  }
+
+  bindEvents() {
+    super.bindEvents?.();
+    const closeBtn = this.querySelector('[data-action="close-pawn-panel"]');
+    if (closeBtn) {
+      this.on(closeBtn, 'click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.props.onClosePawnPanel?.();
+      });
+    }
   }
 }

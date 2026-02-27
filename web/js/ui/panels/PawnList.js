@@ -33,7 +33,9 @@ export class PawnList extends BaseComponent {
 
   componentDidMount() {
     this.querySelectorAll('.pawn-chip').forEach((card) => {
-      this.on(card, 'click', () => {
+      this.on(card, 'click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const pawn = this.pawnCards.find(p => p.id === card.dataset.pawnId);
         if (pawn) this.props.onPawnClick?.(pawn);
       });
@@ -50,7 +52,9 @@ export class PawnList extends BaseComponent {
     container.innerHTML = this.pawnCards.map(p => this._pawnItem(p)).join('');
 
     this.querySelectorAll('.pawn-chip').forEach((card) => {
-      this.on(card, 'click', () => {
+      this.on(card, 'click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const pawn = this.pawnCards.find(p => p.id === card.dataset.pawnId);
         if (pawn) this.props.onPawnClick?.(pawn);
       });

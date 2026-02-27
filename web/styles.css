@@ -255,6 +255,37 @@ body,
   min-width: 0;
 }
 
+
+.building-info-panel {
+  position: absolute;
+  left: -280px;
+  bottom: 0;
+  width: 260px;
+  pointer-events: none;
+}
+
+[data-component="event-log"] {
+  right: 10px !important;
+  bottom: 10px !important;
+  top: auto !important;
+  width: 340px !important;
+  max-height: 220px !important;
+  z-index: 19;
+}
+
+[data-component="inspector"][data-mode="tile-inspector"] {
+  top: 78px !important;
+  right: 10px !important;
+  max-height: calc(100vh - 320px) !important;
+  z-index: 21;
+}
+
+[data-component="inspector"][data-mode="pawn-detail"] {
+  right: 10px !important;
+  bottom: 245px !important;
+  z-index: 22;
+  max-height: 300px !important;
+}
 @media (max-width: 1280px) {
   [data-component="task-list"] {
     width: 260px !important;

@@ -2,9 +2,6 @@ import { BaseComponent } from '../components/BaseComponent.js';
 import { Button } from '../components/Button.js';
 import { BUILDING_TYPES } from '../../config.js';
 
-/**
- * BuildPanel - 建造面板组件
- */
 export class BuildPanel extends BaseComponent {
   constructor(props = {}) {
     super(props);
@@ -24,8 +21,7 @@ export class BuildPanel extends BaseComponent {
   }
 
   mountBuildingButtons() {
-    if (!this.element) return;
-    const container = this.element.querySelector('[data-section="building-buttons"]');
+    const container = this.element?.querySelector('[data-section="building-buttons"]');
     if (!container) return;
 
     const buildings = [
@@ -50,17 +46,14 @@ export class BuildPanel extends BaseComponent {
 
       const wrapper = document.createElement('div');
       wrapper.className = 'building-button-wrapper';
-      wrapper.dataset.building = building.type;
       container.appendChild(wrapper);
-
       button.mount(wrapper);
       this.buildingButtons[building.type] = button;
     });
   }
 
   mountActionButtons() {
-    if (!this.element) return;
-    const container = this.element.querySelector('[data-section="action-buttons"]');
+    const container = this.element?.querySelector('[data-section="action-buttons"]');
     if (!container) return;
 
     const actions = [
@@ -82,41 +75,30 @@ export class BuildPanel extends BaseComponent {
 
       const wrapper = document.createElement('div');
       wrapper.className = 'action-button-wrapper';
-      wrapper.dataset.action = action.mode;
       container.appendChild(wrapper);
-
       button.mount(wrapper);
       this.actionButtons[action.mode] = button;
     });
   }
 
   mountPriorityButtons() {
-    if (!this.element) return;
-    const container = this.element.querySelector('[data-section="priority-buttons"]');
+    const container = this.element?.querySelector('[data-section="priority-buttons"]');
     if (!container) return;
 
-    const priorities = [
-      { value: 3, label: '低' },
-      { value: 5, label: '中' },
-      { value: 7, label: '高' },
-    ];
-
-    priorities.forEach(priority => {
+    [3, 5, 7].forEach(priority => {
       const button = new Button({
-        variant: this.state.priority === priority.value ? 'primary' : 'ghost',
+        variant: this.state.priority === priority ? 'primary' : 'ghost',
         size: 'sm',
-        label: priority.label,
-        active: this.state.priority === priority.value,
-        onClick: () => this.setPriority(priority.value),
+        label: priority === 3 ? '低' : priority === 5 ? '中' : '高',
+        active: this.state.priority === priority,
+        onClick: () => this.setPriority(priority),
       });
 
       const wrapper = document.createElement('div');
       wrapper.className = 'priority-button-wrapper';
-      wrapper.dataset.priority = priority.value;
       container.appendChild(wrapper);
-
       button.mount(wrapper);
-      this.priorityButtons[priority.value] = button;
+      this.priorityButtons[priority] = button;
     });
   }
 
@@ -126,10 +108,7 @@ export class BuildPanel extends BaseComponent {
     this.updateBuildingButtons();
     this.updateActionButtons();
     this.updateBuildingInfoPanel();
-
-    if (this.props.onModeChange) {
-      this.props.onModeChange('build', buildingType);
-    }
+    this.props.onModeChange?.('build', buildingType);
   }
 
   selectMode(mode) {
@@ -138,19 +117,13 @@ export class BuildPanel extends BaseComponent {
     this.updateBuildingButtons();
     this.updateActionButtons();
     this.updateBuildingInfoPanel();
-
-    if (this.props.onModeChange) {
-      this.props.onModeChange(mode, null);
-    }
+    this.props.onModeChange?.(mode, null);
   }
 
   setPriority(priority) {
     this.state.priority = priority;
     this.updatePriorityButtons();
-
-    if (this.props.onPriorityChange) {
-      this.props.onPriorityChange(priority);
-    }
+    this.props.onPriorityChange?.(priority);
   }
 
   updateBuildingButtons() {
@@ -167,11 +140,8 @@ export class BuildPanel extends BaseComponent {
 
   updatePriorityButtons() {
     Object.entries(this.priorityButtons).forEach(([value, button]) => {
-      const isActive = parseInt(value) === this.state.priority;
-      button.update({
-        active: isActive,
-        variant: isActive ? 'primary' : 'ghost',
-      });
+      const active = parseInt(value, 10) === this.state.priority;
+      button.update({ active, variant: active ? 'primary' : 'ghost' });
     });
   }
 
@@ -181,21 +151,19 @@ export class BuildPanel extends BaseComponent {
 
     const type = this.state.selectedBuilding;
     if (!type || !BUILDING_TYPES[type]) {
-      container.innerHTML = '';
       container.classList.add('hidden');
+      container.innerHTML = '';
       return;
     }
 
     const cfg = BUILDING_TYPES[type];
-    const resText = Object.entries(cfg.resources || {})
-      .map(([k, v]) => `${k}:${v}`)
-      .join(' / ') || '无';
+    const resText = Object.entries(cfg.resources || {}).map(([k, v]) => `${k}: ${v}`).join(' / ') || '无';
     const rules = cfg.placementRules || {};
     const terrain = (rules.allowedTerrain || []).join(', ') || '任意';
 
     container.classList.remove('hidden');
     container.innerHTML = `
-      <div class="text-xs text-game-text-dim border border-game-border rounded-md p-2 bg-black/20">
+      <div class="text-xs text-game-text-dim border border-game-border rounded-md p-2 bg-black/80">
         <div class="text-sm text-game-text font-semibold mb-1">${cfg.label}</div>
         <div>尺寸: ${cfg.width} x ${cfg.height}</div>
         <div>资源: ${resText}</div>
@@ -207,17 +175,13 @@ export class BuildPanel extends BaseComponent {
 
   render() {
     const { className = '' } = this.props;
-
     return `
       <div class="build-panel ${className}" data-component="build-panel">
-        <div class="build-panel-header">
-          <h3 class="build-panel-title">建造</h3>
-        </div>
+        <div class="build-panel-header"><h3 class="build-panel-title">建造</h3></div>
 
         <div class="build-panel-section">
           <div class="build-panel-section-label">建筑</div>
           <div class="build-panel-buttons" data-section="building-buttons"></div>
-          <div class="mt-2 hidden" data-section="building-info"></div>
         </div>
 
         <div class="build-panel-section">
@@ -229,16 +193,18 @@ export class BuildPanel extends BaseComponent {
           <div class="build-panel-section-label">优先级</div>
           <div class="build-panel-priority" data-section="priority-buttons"></div>
         </div>
+
+        <div class="building-info-panel hidden" data-section="building-info"></div>
       </div>
     `;
   }
 
   unmount() {
     Object.values(this.buildingButtons).forEach(button => button.unmount?.());
-    this.buildingButtons = {};
     Object.values(this.actionButtons).forEach(button => button.unmount?.());
-    this.actionButtons = {};
     Object.values(this.priorityButtons).forEach(button => button.unmount?.());
+    this.buildingButtons = {};
+    this.actionButtons = {};
     this.priorityButtons = {};
     super.unmount();
   }

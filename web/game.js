@@ -27,6 +27,7 @@ const state = {
   houses: [],
   ores: [],
   buildings: [],
+  droppedItems: [],
   map: [],
   logs: [],
   // System references (will be initialized after scene setup)
@@ -83,6 +84,28 @@ const pathSystem = {
   findPath: null, // Will be set to findPath function after it's defined
 };
 
+const CARRY_LIMITS = {
+  ore: 5,
+  berry: 3,
+};
+
+function getStorageDropoffTile() {
+  const storage = state.buildings.find(b => b.type === 'storage' && b.isComplete);
+  if (storage) return { x: storage.x, z: storage.z };
+  return null;
+}
+
+function addDroppedItem(x, z, itemType, amount) {
+  if (amount <= 0) return;
+  const existing = state.droppedItems.find(i => i.x === x && i.z === z && i.itemType === itemType);
+  if (existing) {
+    existing.amount += amount;
+  } else {
+    state.droppedItems.push({ id: crypto.randomUUID(), x, z, itemType, amount });
+  }
+}
+
+
 function randomRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -104,6 +127,8 @@ function makeMap() {
         type,
         mountain,
         occupied: false,
+        stains: [],
+        footprints: [],
       };
     }
   }
@@ -210,6 +235,8 @@ function addPawn(name, x, z, color) {
   mesh.position.set(pos.x, 0.8, pos.z);
   const pawn = new Pawn(name, x, z, color);
   pawn.inventory = pawn.inventory || [];
+  pawn.carrying = pawn.carrying || null;
+  pawn.blockedTicks = 0;
   pawn.mesh = mesh;
   mesh.userData = { kind: "pawn", entity: pawn };
   state.pawns.push(pawn);
@@ -404,6 +431,22 @@ function updatePawn(pawn, dt) {
       return;
     }
 
+    // If task assigned but path is empty and pawn not at destination, retry pathfinding.
+    if ((pawn.pos.x !== currentTask.x || pawn.pos.z !== currentTask.z) && (!pawn.targetPath || pawn.targetPath.length === 0)) {
+      const retryPath = findPath(pawn.pos, { x: currentTask.x, z: currentTask.z });
+      if (retryPath.length > 1) {
+        pawn.targetPath = retryPath.slice(1);
+        return;
+      }
+
+      // unreachable task: return task to queue to avoid colonist stuck forever
+      currentTask.status = 'queued';
+      currentTask.assignee = null;
+      pawn.currentTask = null;
+      pawn.task = null;
+      return;
+    }
+
     // Check if at task location
     if (pawn.pos.x === currentTask.x && pawn.pos.z === currentTask.z) {
       currentTask.status = 'in_progress';
@@ -451,6 +494,18 @@ function updatePawn(pawn, dt) {
       }
     }
   } else {
+    // If carrying resources, prioritize hauling to storage
+    const storageTile = getStorageDropoffTile();
+    if (pawn.carrying && storageTile && state.taskSystem && !state.taskSystem.hasTaskAt(storageTile.x, storageTile.z)) {
+      const haulTask = new Task('haul', storageTile.x, storageTile.z, {
+        priority: 10,
+        haulItemType: pawn.carrying.itemType,
+        haulAmount: pawn.carrying.amount,
+      });
+      state.taskSystem.addTask(haulTask);
+      return;
+    }
+
     // Auto-dispatch: find mature berry bushes (if TaskSystem is available)
     if (state.taskSystem && typeof state.taskSystem.hasTaskAt === 'function') {
       const mature = state.berryBushes.find((b) => b.berryCount > 0);
@@ -469,6 +524,22 @@ function movePawnAlongPath(pawn, dt) {
   if (!pawn.targetPath || pawn.targetPath.length === 0) return;
 
   const target = pawn.targetPath[0];
+
+  const occupiedByPawn = state.pawns.some(other =>
+    other.id !== pawn.id && Math.round(other.pos.x) === Math.round(target.x) && Math.round(other.pos.z) === Math.round(target.z)
+  );
+  if (occupiedByPawn) {
+    pawn.blockedTicks = (pawn.blockedTicks || 0) + 1;
+    if (pawn.blockedTicks > 20) {
+      const repath = findPath(pawn.pos, pawn.currentTask ? { x: pawn.currentTask.x, z: pawn.currentTask.z } : target);
+      if (repath.length > 1) {
+        pawn.targetPath = repath.slice(1);
+      }
+      pawn.blockedTicks = 0;
+    }
+    return;
+  }
+  pawn.blockedTicks = 0;
   const dx = target.x - pawn.pos.x;
   const dz = target.z - pawn.pos.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
@@ -484,6 +555,14 @@ function movePawnAlongPath(pawn, dt) {
     // Move towards waypoint
     pawn.pos.x += (dx / dist) * moveDist;
     pawn.pos.z += (dz / dist) * moveDist;
+  }
+
+  const cx = Math.round(pawn.pos.x);
+  const cz = Math.round(pawn.pos.z);
+  if (state.map[cz] && state.map[cz][cx]) {
+    const marks = state.map[cz][cx].footprints || (state.map[cz][cx].footprints = []);
+    marks.push(pawn.name);
+    if (marks.length > 3) marks.shift();
   }
 
   // Update mesh position
@@ -507,34 +586,53 @@ function completeTask(pawn, task) {
 
   // Apply task effects
   switch (task.type) {
-    case 'mine_ore':
-      state.resources.ore = (state.resources.ore || 0) + 10;
-      // Remove ore if depleted
+    case 'mine_ore': {
       const ore = state.ores.find((o) => o.x === task.x && o.z === task.z);
-      if (ore) {
-        ore.amount -= 10;
-        if (ore.amount <= 0) {
-          world.remove(ore.mesh);
-          state.ores = state.ores.filter((o) => o.id !== ore.id);
-          logEvent("矿脉已枯竭");
-        }
-      }
-      logEvent(`${pawn.name} 开采矿石 +10`);
-      break;
+      if (!ore) break;
 
-    case 'harvest_berry':
+      const mined = Math.min(10, ore.amount);
+      ore.amount -= mined;
+
+      const carryLimit = CARRY_LIMITS.ore;
+      const canCarry = pawn.carrying ? 0 : carryLimit;
+      const carried = Math.min(mined, canCarry);
+      const dropped = mined - carried;
+
+      if (carried > 0) pawn.carrying = { itemType: 'ore', amount: carried };
+      if (dropped > 0) addDroppedItem(task.x, task.z, 'ore', dropped);
+
+      if (ore.amount <= 0) {
+        world.remove(ore.mesh);
+        state.ores = state.ores.filter((o) => o.id !== ore.id);
+        logEvent('矿脉已枯竭');
+      }
+
+      logEvent(`${pawn.name} 开采矿石 ${mined}（携带 ${carried}，掉落 ${dropped}）`);
+      break;
+    }
+
+    case 'harvest_berry': {
       const bush = state.berryBushes?.find(b => b.x === task.x && b.z === task.z);
       if (bush && bush.berryCount > 0) {
         const picked = Math.min(3, bush.berryCount);
         bush.berryCount -= picked;
-        state.resources.berry = (state.resources.berry || 0) + picked;
-        state.resources.food = (state.resources.food || 0) + picked;
+
+        const carryLimit = CARRY_LIMITS.berry;
+        const canCarry = pawn.carrying ? 0 : carryLimit;
+        const carried = Math.min(picked, canCarry);
+        const dropped = picked - carried;
+
+        if (carried > 0) pawn.carrying = { itemType: 'berry', amount: carried };
+        if (dropped > 0) addDroppedItem(task.x, task.z, 'berry', dropped);
+
         if (bush.mesh) {
           bush.mesh.material.color.setHex(bush.berryCount > 0 ? 0x4ea43f : 0x5c6f56);
         }
-        logEvent(`${pawn.name} 收获浆果 +${picked}`);
+
+        logEvent(`${pawn.name} 收获浆果 ${picked}（携带 ${carried}，掉落 ${dropped}）`);
       }
       break;
+    }
 
     case 'build_wall':
     case 'build_door':
@@ -602,6 +700,16 @@ function completeTask(pawn, task) {
 
           logEvent(`${pawn.name} 完成拆除: ${buildingLabel}`);
         }
+      }
+      break;
+
+    case 'haul':
+      if (pawn.carrying) {
+        const amount = pawn.carrying.amount;
+        const itemType = pawn.carrying.itemType;
+        state.resources[itemType] = (state.resources[itemType] || 0) + amount;
+        pawn.carrying = null;
+        logEvent(`${pawn.name} 已将${itemType} x${amount}送入仓库区域`);
       }
       break;
 
@@ -791,29 +899,23 @@ function inspectAt(hit) {
   }
 
   if (x !== undefined && z !== undefined && state.map[z] && state.map[z][x]) {
-    const terrain = state.map[z][x].type;
-    const related = [];
+    const cell = state.map[z][x];
+    const terrain = cell.type;
+    const marks = [];
 
-    const pawn = state.pawns.find(p => p.pos.x === x && p.pos.z === z);
-    if (pawn) related.push(`殖民者: ${pawn.name}`);
-
-    const ore = state.ores.find(o => o.x === x && o.z === z);
-    if (ore) related.push(`矿脉(储量 ${ore.amount})`);
-
-    const bush = state.berryBushes.find(b => b.x === x && b.z === z);
-    if (bush) related.push(`浆果灌木(可收获 ${bush.berryCount})`);
-
-    const building = state.buildings.find(b => b.x === x && b.z === z);
-    if (building) related.push(`建筑: ${BUILDING_TYPES[building.type]?.label || building.type}`);
-
-    const tasks = state.tasks.filter(t => t.x === x && t.z === z && t.status !== 'completed' && t.status !== 'cancelled');
-    tasks.forEach(t => related.push(`任务: ${t.label || t.type}`));
+    if (cell.stains?.length) {
+      marks.push(...cell.stains.map(s => `污渍: ${s}`));
+    }
+    if (cell.footprints?.length) {
+      marks.push(...cell.footprints.map(f => `脚印: ${f}`));
+    }
 
     state.uiManager.showInspector({
       type: 'tile',
       terrain,
+      hasMountain: !!cell.mountain,
       position: `(${x},${z})`,
-      relatedObjects: related,
+      surfaceMarks: marks,
     });
     return;
   }

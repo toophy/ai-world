@@ -79,6 +79,7 @@ export class UIManager {
     // 检视器
     const inspector = new Inspector({
       entity: this.selectedPawn || null,
+      onClosePawnPanel: () => this.setSelectedPawn(null),
     });
     inspector.mount(this.root);
     this.panels.set('inspector', inspector);
@@ -156,6 +157,7 @@ export class UIManager {
     if (inspector) {
       inspector.update({
         entity: entity || null,
+        onClosePawnPanel: () => this.setSelectedPawn(null),
       });
     }
   }
