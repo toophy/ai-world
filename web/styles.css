@@ -84,3 +84,131 @@ body,
   padding-left: 6px;
   color: #d3def1;
 }
+
+/* ===== UI layout tuning: game-like panel composition ===== */
+[data-component="top-bar"] {
+  z-index: 30;
+}
+
+/* Resource badges in top bar */
+.resource-panel .resource-panel-header {
+  display: none;
+}
+.resource-panel .resource-panel-content {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Left column */
+[data-component="pawn-list"] {
+  top: 78px !important;
+  left: 10px !important;
+  width: 300px !important;
+  bottom: 330px !important;
+  z-index: 20;
+}
+
+[data-component="task-list"] {
+  left: 10px !important;
+  bottom: 120px !important;
+  width: 300px !important;
+  height: 200px !important;
+  max-height: 200px !important;
+  z-index: 20;
+}
+
+/* Right column */
+[data-component="inspector"] {
+  top: 78px !important;
+  right: 10px !important;
+  width: 340px !important;
+  max-height: calc(100vh - 390px) !important;
+  z-index: 20;
+}
+
+[data-component="event-log"] {
+  right: 10px !important;
+  bottom: 120px !important;
+  width: 340px !important;
+  max-height: 250px !important;
+  z-index: 20;
+}
+
+/* Bottom build command bar */
+.build-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: min(760px, calc(100vw - 680px));
+  min-width: 520px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  padding: 10px 12px;
+  pointer-events: auto;
+  z-index: 25;
+}
+
+.build-panel-header {
+  margin-bottom: 8px;
+}
+
+.build-panel-title {
+  margin: 0;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.build-panel-section {
+  margin-bottom: 10px;
+}
+
+.build-panel-section:last-child {
+  margin-bottom: 0;
+}
+
+.build-panel-section-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.build-panel-buttons {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.build-panel-priority {
+  display: flex;
+  gap: 8px;
+}
+
+/* Ensure button wrappers fill available slots */
+.building-button-wrapper,
+.action-button-wrapper,
+.priority-button-wrapper {
+  min-width: 0;
+}
+
+@media (max-width: 1280px) {
+  [data-component="pawn-list"],
+  [data-component="task-list"] {
+    width: 260px !important;
+  }
+
+  [data-component="inspector"],
+  [data-component="event-log"] {
+    width: 300px !important;
+  }
+
+  .build-panel {
+    width: calc(100vw - 580px);
+    min-width: 460px;
+  }
+}
