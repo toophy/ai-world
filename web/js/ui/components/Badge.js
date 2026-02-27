@@ -52,8 +52,9 @@ export class Badge extends BaseComponent {
     const sizeClass = sizes[size] || sizes.md;
     const classes = `${baseClasses} ${variantClass} ${sizeClass} ${className}`.trim();
 
-    // 构建内容 - 逃逸所有动态值以防止XSS
-    const iconHtml = icon ? `<span class="opacity-70 pointer-events-none">${escapeHtml(icon)}</span>` : '';
+    // 构建内容
+    // icon 来自组件内部 renderIcon()，是受控 SVG 片段，不做 escape，避免显示原始字符串
+    const iconHtml = icon ? `<span class="opacity-70 pointer-events-none">${icon}</span>` : '';
     const labelHtml = label ? `<span class="text-game-text-dim pointer-events-none">${escapeHtml(label)}</span>` : '';
     const valueHtml = value !== undefined ? `<span class="font-bold pointer-events-none">${escapeHtml(String(value))}</span>` : '';
 

@@ -41,7 +41,7 @@ export class TaskList extends BaseComponent {
     }).join('');
 
     return `
-      <div class="absolute top-[78px] left-2.5 w-[280px] top-[200px] max-h-[calc(100vh-320px)] p-3 overflow-y-auto rounded-lg bg-game-panel border border-game-border backdrop-blur-xs shadow-lg pointer-events-auto" data-component="task-list">
+      <div class="absolute left-2.5 w-[280px] p-3 overflow-y-auto rounded-lg bg-game-panel border border-game-border backdrop-blur-xs shadow-lg pointer-events-auto" data-component="task-list">
         <h3 class="text-sm font-semibold text-game-accent mb-2 pb-1 border-b border-game-border">任务队列</h3>
         <div class="flex flex-col gap-1">
           ${activeTasks.length > 0 ? taskItems : '<div class="text-sm text-game-text-dim text-center py-4">暂无任务</div>'}
