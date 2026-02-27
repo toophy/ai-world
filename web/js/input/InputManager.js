@@ -35,7 +35,8 @@ export class InputManager {
       pointerMove: this._handlePointerMove.bind(this),
       pointerUp: this._handlePointerUp.bind(this),
       contextMenu: this._handleContextMenu.bind(this),
-      keyDown: this.handleKeyDown.bind(this)
+      keyDown: this.handleKeyDown.bind(this),
+      wheel: this._handleWheel.bind(this)
     };
 
     this.setupEventListeners();
@@ -56,6 +57,9 @@ export class InputManager {
 
     // Keyboard shortcuts
     window.addEventListener('keydown', this._boundHandlers.keyDown);
+
+    // Mouse wheel zoom
+    this.canvas.addEventListener('wheel', this._boundHandlers.wheel, { passive: false });
   }
 
   _handlePointerDown(e) {
@@ -96,7 +100,24 @@ export class InputManager {
       // Update highlights based on what was clicked
       this._updateHighlights(clickedEntity, e);
 
-      this.modeHandler.handleInteraction(selectedTiles, clickedEntity);
+      const targetEntity = clickedEntity?.entity || clickedEntity;
+      this.modeHandler.handleInteraction(selectedTiles, targetEntity);
+    }
+  }
+
+  _handleWheel(e) {
+    e.preventDefault();
+
+    const zoomStep = 1.5;
+    const direction = e.deltaY > 0 ? 1 : -1;
+    const offset = this.camera.position.clone();
+    const distance = offset.length();
+    const nextDistance = Math.min(90, Math.max(16, distance + direction * zoomStep));
+
+    if (distance > 0.001) {
+      offset.normalize().multiplyScalar(nextDistance);
+      this.camera.position.copy(offset);
+      this.camera.lookAt(0, 0, 0);
     }
   }
 
@@ -165,6 +186,7 @@ export class InputManager {
 
     // Check if the preview is in a valid position
     if (!this.buildingPreview.isValid || !this.buildingPreview.currentPosition) {
+      this.uiManager?.showNotification?.('当前位置无法建造，请移动到绿色预览区域', 'warning');
       return false;
     }
 
@@ -179,9 +201,11 @@ export class InputManager {
       return false;
     }
 
-    // Check resources and deduct if sufficient
+    // Check resources first
     const resources = config.resources || {};
-    if (!this._checkAndDeductResources(resources)) {
+    const resourceCheck = this._checkResources(resources);
+    if (!resourceCheck.ok) {
+      this.uiManager?.showNotification?.(resourceCheck.message, 'warning');
       return false;
     }
 
@@ -194,11 +218,13 @@ export class InputManager {
     );
 
     if (!validationResult.valid) {
-      console.warn('Placement validation failed:', validationResult.reason);
-      // TODO: Implement transaction/rollback mechanism to revert resource deduction
-      // when placement fails after resource check. For now, resources remain deducted.
+      const reason = this._translatePlacementReason(validationResult);
+      console.warn('Placement validation failed:', reason);
+      this.uiManager?.showNotification?.(`建造失败: ${reason}`, 'warning');
       return false;
     }
+
+    this._deductResources(resources);
 
     // TODO: Consider implementing a transactional system where resources are only
     // committed after all validation passes. This would prevent resource loss if
@@ -241,27 +267,39 @@ export class InputManager {
   }
 
   /**
-   * Check if required resources are available and deduct them if so
-   * @param {Object} resources - Object mapping resource names to required amounts
-   * @returns {boolean} True if resources were sufficient and deducted, false otherwise
-   * @private
+   * Check if required resources are available
    */
-  _checkAndDeductResources(resources) {
-    // First pass: check all resources
+
+  _translatePlacementReason(validationResult) {
+    const reason = validationResult?.reason;
+    const map = {
+      out_of_bounds: '超出地图边界',
+      building_overlap: '与现有建筑重叠',
+      task_overlap: '与已有任务冲突',
+      requires_indoors: '需要靠近墙体（室内）',
+      invalid_terrain: '地形不满足建造要求',
+      unknown_building_type: '未知建筑类型',
+      needs_neighbors: `需要更多相邻建筑（至少 ${validationResult?.required ?? 0}）`,
+    };
+    return map[reason] || reason || '无法在该位置建造';
+  }
+
+  _checkResources(resources) {
     for (const [resource, amount] of Object.entries(resources)) {
-      if ((this.state.resources[resource] || 0) < amount) {
-        console.warn(`Insufficient ${resource}: need ${amount}, have ${this.state.resources[resource] || 0}`);
-        // TODO: Show UI notification for insufficient resources
-        return false;
+      const have = this.state.resources[resource] || 0;
+      if (have < amount) {
+        console.warn(`Insufficient ${resource}: need ${amount}, have ${have}`);
+        return { ok: false, message: `资源不足: ${resource} 需要 ${amount}，当前 ${have}` };
       }
     }
 
-    // Second pass: deduct resources (only if all checks passed)
+    return { ok: true, message: '' };
+  }
+
+  _deductResources(resources) {
     for (const [resource, amount] of Object.entries(resources)) {
       this.state.resources[resource] = (this.state.resources[resource] || 0) - amount;
     }
-
-    return true;
   }
 
   /**
@@ -312,6 +350,7 @@ export class InputManager {
     this.canvas.removeEventListener('pointerup', this._boundHandlers.pointerUp);
     this.canvas.removeEventListener('contextmenu', this._boundHandlers.contextMenu);
     window.removeEventListener('keydown', this._boundHandlers.keyDown);
+    this.canvas.removeEventListener('wheel', this._boundHandlers.wheel);
 
     // Clean up handlers
     this._boundHandlers = null;
@@ -348,7 +387,8 @@ export class InputManager {
     const pawnIntersects = this.raycaster.intersectObjects(pawnMeshes);
     if (pawnIntersects.length > 0) {
       const mesh = pawnIntersects[0].object;
-      return this.state.pawns.find(p => p.mesh === mesh);
+      const pawn = this.state.pawns.find(p => p.mesh === mesh);
+      return pawn ? { kind: 'pawn', entity: pawn, object: mesh } : null;
     }
 
     // Check buildings
@@ -360,11 +400,26 @@ export class InputManager {
       const buildingIntersects = this.raycaster.intersectObjects(buildingMeshes);
       if (buildingIntersects.length > 0) {
         const mesh = buildingIntersects[0].object;
-        return this.state.buildings.find(b => b.mesh === mesh);
+        const building = this.state.buildings.find(b => b.mesh === mesh);
+        return building ? { kind: 'building', entity: building, object: mesh } : null;
       }
     }
 
-    // TODO: Check other entities (ores, berry bushes)
+    const oreMeshes = this.state.ores?.filter(o => o.mesh).map(o => o.mesh) || [];
+    const oreIntersects = this.raycaster.intersectObjects(oreMeshes);
+    if (oreIntersects.length > 0) {
+      const mesh = oreIntersects[0].object;
+      const ore = this.state.ores.find(o => o.mesh === mesh);
+      return ore ? { kind: 'ore', entity: { ...ore, entityType: 'ore', type: 'ore' }, object: mesh } : null;
+    }
+
+    const berryMeshes = this.state.berryBushes?.filter(b => b.mesh).map(b => b.mesh) || [];
+    const berryIntersects = this.raycaster.intersectObjects(berryMeshes);
+    if (berryIntersects.length > 0) {
+      const mesh = berryIntersects[0].object;
+      const bush = this.state.berryBushes.find(b => b.mesh === mesh);
+      return bush ? { kind: 'berry_bush', entity: { ...bush, entityType: 'berry_bush', type: 'berry_bush' }, object: mesh } : null;
+    }
 
     return null;
   }

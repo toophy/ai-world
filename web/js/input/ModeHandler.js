@@ -1,5 +1,11 @@
 import { Task } from '../entities/Task.js';
 
+const OBJECT_OPERATION_RULES = {
+  ore: ['mine'],
+  berry_bush: ['harvest'],
+  building: ['demolish'],
+};
+
 export class ModeHandler {
   constructor(state, taskSystem, pathSystem, inputManager = null) {
     this.state = state;
@@ -11,17 +17,9 @@ export class ModeHandler {
     this.priorityLevel = 5;
   }
 
-  /**
-   * Sets the current interaction mode and optional building type for build mode.
-   * Manages building preview lifecycle when entering/exiting build mode.
-   *
-   * @param {string} mode - The interaction mode ('build', 'inspect', 'mine', 'harvest', 'cancel')
-   * @param {string|null} buildingType - Optional building type key when mode is 'build'
-   */
   setMode(mode, buildingType = null) {
     const BUILD_MODE = 'build';
 
-    // End building preview when exiting build mode or switching building types
     if (this.currentMode === BUILD_MODE && (mode !== BUILD_MODE || buildingType !== this.selectedBuildingType)) {
       if (this.inputManager) {
         this.inputManager.endBuildingPreview();
@@ -32,7 +30,6 @@ export class ModeHandler {
     this.selectedBuildingType = buildingType;
     console.log(`Mode: ${mode}`, buildingType ? `(${buildingType})` : '');
 
-    // Start building preview when entering build mode with a building type
     if (mode === BUILD_MODE && buildingType && this.inputManager) {
       this.inputManager.startBuildingPreview(buildingType);
     }
@@ -46,7 +43,6 @@ export class ModeHandler {
   handleInteraction(selectedTiles, clickedEntity = null) {
     switch (this.currentMode) {
       case "inspect":
-        // Handled by UI
         break;
       case "mine":
         this.createMineTasks(clickedEntity || selectedTiles);
@@ -60,15 +56,30 @@ export class ModeHandler {
       case "cancel":
         selectedTiles.forEach(tile => this.taskSystem.cancelTasksAt(tile.x, tile.z));
         break;
-      // Build mode is handled by InputManager._tryPlaceBuilding()
     }
   }
 
-  // TODO (code_quality): Refactor to reduce duplication between createMineTasks, createHarvestTasks, and createDemolishTasks
-  // They all follow the same pattern: if (Array.isArray(target)) / else if with similar task creation logic
+  _getEntityKind(target) {
+    if (!target) return null;
+    if (target.entityType) return target.entityType;
+    if (target.type === 'ore') return 'ore';
+    if (target.type === 'berry_bush') return 'berry_bush';
+    if (target.type && ['wall', 'door', 'bed', 'storage', 'workbench', 'medical_bed', 'house'].includes(target.type)) return 'building';
+    if (target.amount !== undefined && target.x !== undefined && target.z !== undefined) return 'ore';
+    if (target.berryCount !== undefined && target.x !== undefined && target.z !== undefined) return 'berry_bush';
+    if (target.id && target.x !== undefined && target.z !== undefined) return 'building';
+    return null;
+  }
+
+  _isOperationAllowedForEntity(mode, target) {
+    const kind = this._getEntityKind(target);
+    if (!kind) return false;
+    const allowed = OBJECT_OPERATION_RULES[kind] || [];
+    return allowed.includes(mode);
+  }
+
   createMineTasks(target) {
     if (Array.isArray(target)) {
-      // Box selection - find ore in selected tiles
       for (const tile of target) {
         const ore = this.state.ores?.find(o => o.x === tile.x && o.z === tile.z);
         if (ore && !this.taskSystem.hasTaskAt(tile.x, tile.z)) {
@@ -78,14 +89,16 @@ export class ModeHandler {
           this.taskSystem.addTask(task);
         }
       }
-    } else if (target && target.type === 'ore') {
-      // Single ore clicked
-      if (!this.taskSystem.hasTaskAt(target.x, target.z)) {
-        const task = new Task('mine_ore', target.x, target.z, {
-          priority: this.priorityLevel,
-        });
-        this.taskSystem.addTask(task);
-      }
+      return;
+    }
+
+    if (!this._isOperationAllowedForEntity('mine', target)) return;
+
+    if (!this.taskSystem.hasTaskAt(target.x, target.z)) {
+      const task = new Task('mine_ore', target.x, target.z, {
+        priority: this.priorityLevel,
+      });
+      this.taskSystem.addTask(task);
     }
   }
 
@@ -100,13 +113,16 @@ export class ModeHandler {
           this.taskSystem.addTask(task);
         }
       }
-    } else if (target && target.type === 'berry_bush') {
-      if (target.berryCount > 0 && !this.taskSystem.hasTaskAt(target.x, target.z)) {
-        const task = new Task('harvest_berry', target.x, target.z, {
-          priority: this.priorityLevel,
-        });
-        this.taskSystem.addTask(task);
-      }
+      return;
+    }
+
+    if (!this._isOperationAllowedForEntity('harvest', target)) return;
+
+    if (target.berryCount > 0 && !this.taskSystem.hasTaskAt(target.x, target.z)) {
+      const task = new Task('harvest_berry', target.x, target.z, {
+        priority: this.priorityLevel,
+      });
+      this.taskSystem.addTask(task);
     }
   }
 
@@ -120,22 +136,22 @@ export class ModeHandler {
             buildingId: building.id,
           });
           this.taskSystem.addTask(task);
-          // Mark building as demolishing
           building.state = 'demolishing';
         }
       }
-    } else if (target && target.id) {
-      // Single building clicked
-      const building = this.state.buildings?.find(b => b.id === target.id);
-      if (building && building.state !== 'demolishing' && !this.taskSystem.hasTaskAt(building.x, building.z)) {
-        const task = new Task('demolish', building.x, building.z, {
-          priority: this.priorityLevel,
-          buildingId: building.id,
-        });
-        this.taskSystem.addTask(task);
-        // Mark building as demolishing
-        building.state = 'demolishing';
-      }
+      return;
+    }
+
+    if (!this._isOperationAllowedForEntity('demolish', target)) return;
+
+    const building = this.state.buildings?.find(b => b.id === target.id) || target;
+    if (building && building.state !== 'demolishing' && !this.taskSystem.hasTaskAt(building.x, building.z)) {
+      const task = new Task('demolish', building.x, building.z, {
+        priority: this.priorityLevel,
+        buildingId: building.id,
+      });
+      this.taskSystem.addTask(task);
+      building.state = 'demolishing';
     }
   }
 }

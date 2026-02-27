@@ -27,6 +27,7 @@ const state = {
   houses: [],
   ores: [],
   buildings: [],
+  droppedItems: [],
   map: [],
   logs: [],
   // System references (will be initialized after scene setup)
@@ -83,6 +84,42 @@ const pathSystem = {
   findPath: null, // Will be set to findPath function after it's defined
 };
 
+const CARRY_LIMITS = {
+  ore: 5,
+  berry: 3,
+};
+
+const DEFAULT_STOCKPILE_TILE = { x: 2, z: 2 };
+
+function getStorageDropoffTile() {
+  const storage = state.buildings.find(b => b.type === 'storage' && b.isComplete);
+  if (storage) return { x: storage.x, z: storage.z };
+  return DEFAULT_STOCKPILE_TILE;
+}
+
+function addDroppedItem(x, z, itemType, amount) {
+  if (amount <= 0) return;
+
+  const existing = state.droppedItems.find(i => i.x === x && i.z === z && i.itemType === itemType);
+  if (existing) {
+    existing.amount += amount;
+    return;
+  }
+
+  const worldPos = gridToWorld(x, z);
+  const color = itemType === 'ore' ? 0x7ec4ff : 0xff7aa2;
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.35, 0.35, 0.35),
+    new THREE.MeshStandardMaterial({ color, emissive: 0x111111 })
+  );
+  mesh.position.set(worldPos.x, 0.2, worldPos.z);
+  mesh.userData = { kind: 'dropped_item', itemType };
+  world.add(mesh);
+
+  state.droppedItems.push({ id: crypto.randomUUID(), x, z, itemType, amount, mesh });
+}
+
+
 function randomRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -104,6 +141,8 @@ function makeMap() {
         type,
         mountain,
         occupied: false,
+        stains: [],
+        footprints: [],
       };
     }
   }
@@ -209,6 +248,9 @@ function addPawn(name, x, z, color) {
   mesh.castShadow = true;
   mesh.position.set(pos.x, 0.8, pos.z);
   const pawn = new Pawn(name, x, z, color);
+  pawn.inventory = pawn.inventory || [];
+  pawn.carrying = pawn.carrying || null;
+  pawn.blockedTicks = 0;
   pawn.mesh = mesh;
   mesh.userData = { kind: "pawn", entity: pawn };
   state.pawns.push(pawn);
@@ -403,6 +445,22 @@ function updatePawn(pawn, dt) {
       return;
     }
 
+    // If task assigned but path is empty and pawn not at destination, retry pathfinding.
+    if ((pawn.pos.x !== currentTask.x || pawn.pos.z !== currentTask.z) && (!pawn.targetPath || pawn.targetPath.length === 0)) {
+      const retryPath = findPath(pawn.pos, { x: currentTask.x, z: currentTask.z });
+      if (retryPath.length > 1) {
+        pawn.targetPath = retryPath.slice(1);
+        return;
+      }
+
+      // unreachable task: return task to queue to avoid colonist stuck forever
+      currentTask.status = 'queued';
+      currentTask.assignee = null;
+      pawn.currentTask = null;
+      pawn.task = null;
+      return;
+    }
+
     // Check if at task location
     if (pawn.pos.x === currentTask.x && pawn.pos.z === currentTask.z) {
       currentTask.status = 'in_progress';
@@ -450,6 +508,31 @@ function updatePawn(pawn, dt) {
       }
     }
   } else {
+    // If carrying resources, prioritize hauling to storage
+    const storageTile = getStorageDropoffTile();
+    if (pawn.carrying && storageTile && state.taskSystem && !state.taskSystem.hasTaskAt(storageTile.x, storageTile.z)) {
+      const haulTask = new Task('haul', storageTile.x, storageTile.z, {
+        priority: 10,
+        haulItemType: pawn.carrying.itemType,
+        haulAmount: pawn.carrying.amount,
+      });
+      state.taskSystem.addTask(haulTask);
+      return;
+    }
+
+    // Haul dropped resources to stockpile/storage first
+    if (state.taskSystem && typeof state.taskSystem.hasTaskAt === 'function') {
+      const dropped = state.droppedItems.find(item => item.amount > 0 && !state.taskSystem.hasTaskAt(item.x, item.z));
+      if (dropped) {
+        const task = new Task('haul', dropped.x, dropped.z, {
+          priority: 10,
+          haulDropId: dropped.id,
+        });
+        state.taskSystem.addTask(task);
+        return;
+      }
+    }
+
     // Auto-dispatch: find mature berry bushes (if TaskSystem is available)
     if (state.taskSystem && typeof state.taskSystem.hasTaskAt === 'function') {
       const mature = state.berryBushes.find((b) => b.berryCount > 0);
@@ -468,6 +551,22 @@ function movePawnAlongPath(pawn, dt) {
   if (!pawn.targetPath || pawn.targetPath.length === 0) return;
 
   const target = pawn.targetPath[0];
+
+  const occupiedByPawn = state.pawns.some(other =>
+    other.id !== pawn.id && Math.round(other.pos.x) === Math.round(target.x) && Math.round(other.pos.z) === Math.round(target.z)
+  );
+  if (occupiedByPawn) {
+    pawn.blockedTicks = (pawn.blockedTicks || 0) + 1;
+    if (pawn.blockedTicks > 20) {
+      const repath = findPath(pawn.pos, pawn.currentTask ? { x: pawn.currentTask.x, z: pawn.currentTask.z } : target);
+      if (repath.length > 1) {
+        pawn.targetPath = repath.slice(1);
+      }
+      pawn.blockedTicks = 0;
+    }
+    return;
+  }
+  pawn.blockedTicks = 0;
   const dx = target.x - pawn.pos.x;
   const dz = target.z - pawn.pos.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
@@ -483,6 +582,14 @@ function movePawnAlongPath(pawn, dt) {
     // Move towards waypoint
     pawn.pos.x += (dx / dist) * moveDist;
     pawn.pos.z += (dz / dist) * moveDist;
+  }
+
+  const cx = Math.round(pawn.pos.x);
+  const cz = Math.round(pawn.pos.z);
+  if (state.map[cz] && state.map[cz][cx]) {
+    const marks = state.map[cz][cx].footprints || (state.map[cz][cx].footprints = []);
+    marks.push(pawn.name);
+    if (marks.length > 3) marks.shift();
   }
 
   // Update mesh position
@@ -506,34 +613,53 @@ function completeTask(pawn, task) {
 
   // Apply task effects
   switch (task.type) {
-    case 'mine_ore':
-      state.resources.ore = (state.resources.ore || 0) + 10;
-      // Remove ore if depleted
+    case 'mine_ore': {
       const ore = state.ores.find((o) => o.x === task.x && o.z === task.z);
-      if (ore) {
-        ore.amount -= 10;
-        if (ore.amount <= 0) {
-          world.remove(ore.mesh);
-          state.ores = state.ores.filter((o) => o.id !== ore.id);
-          logEvent("矿脉已枯竭");
-        }
-      }
-      logEvent(`${pawn.name} 开采矿石 +10`);
-      break;
+      if (!ore) break;
 
-    case 'harvest_berry':
+      const mined = Math.min(10, ore.amount);
+      ore.amount -= mined;
+
+      const carryLimit = CARRY_LIMITS.ore;
+      const canCarry = pawn.carrying ? 0 : carryLimit;
+      const carried = Math.min(mined, canCarry);
+      const dropped = mined - carried;
+
+      if (carried > 0) pawn.carrying = { itemType: 'ore', amount: carried };
+      if (dropped > 0) addDroppedItem(task.x, task.z, 'ore', dropped);
+
+      if (ore.amount <= 0) {
+        world.remove(ore.mesh);
+        state.ores = state.ores.filter((o) => o.id !== ore.id);
+        logEvent('矿脉已枯竭');
+      }
+
+      logEvent(`${pawn.name} 开采矿石 ${mined}（携带 ${carried}，掉落 ${dropped}）`);
+      break;
+    }
+
+    case 'harvest_berry': {
       const bush = state.berryBushes?.find(b => b.x === task.x && b.z === task.z);
       if (bush && bush.berryCount > 0) {
         const picked = Math.min(3, bush.berryCount);
         bush.berryCount -= picked;
-        state.resources.berry = (state.resources.berry || 0) + picked;
-        state.resources.food = (state.resources.food || 0) + picked;
+
+        const carryLimit = CARRY_LIMITS.berry;
+        const canCarry = pawn.carrying ? 0 : carryLimit;
+        const carried = Math.min(picked, canCarry);
+        const dropped = picked - carried;
+
+        if (carried > 0) pawn.carrying = { itemType: 'berry', amount: carried };
+        if (dropped > 0) addDroppedItem(task.x, task.z, 'berry', dropped);
+
         if (bush.mesh) {
           bush.mesh.material.color.setHex(bush.berryCount > 0 ? 0x4ea43f : 0x5c6f56);
         }
-        logEvent(`${pawn.name} 收获浆果 +${picked}`);
+
+        logEvent(`${pawn.name} 收获浆果 ${picked}（携带 ${carried}，掉落 ${dropped}）`);
       }
       break;
+    }
 
     case 'build_wall':
     case 'build_door':
@@ -603,6 +729,32 @@ function completeTask(pawn, task) {
         }
       }
       break;
+
+    case 'haul': {
+      if (task.haulDropId && !pawn.carrying) {
+        const dropped = state.droppedItems.find(i => i.id === task.haulDropId);
+        if (dropped) {
+          const carryLimit = CARRY_LIMITS[dropped.itemType] || 1;
+          const amount = Math.min(carryLimit, dropped.amount);
+          pawn.carrying = { itemType: dropped.itemType, amount };
+          dropped.amount -= amount;
+
+          if (dropped.amount <= 0) {
+            if (dropped.mesh) world.remove(dropped.mesh);
+            state.droppedItems = state.droppedItems.filter(i => i.id !== dropped.id);
+          }
+        }
+      }
+
+      if (pawn.carrying) {
+        const amount = pawn.carrying.amount;
+        const itemType = pawn.carrying.itemType;
+        state.resources[itemType] = (state.resources[itemType] || 0) + amount;
+        pawn.carrying = null;
+        logEvent(`${pawn.name} 已将${itemType} x${amount}送入仓库区域`);
+      }
+      break;
+    }
 
     case 'move_order':
       logEvent(`${pawn.name} 到达目的地`);
@@ -735,92 +887,83 @@ function renderUI() {
 }
 
 function inspectAt(hit) {
-  // Use UIManager to show inspector if available
-  if (state.uiManager) {
-    if (!hit) {
-      state.uiManager.showInspector(null);
-      return;
-    }
-    const userData = hit.object.userData || {};
-    const { kind, entity, x, z } = userData;
+  if (!state.uiManager) return;
 
-    // Build inspector data object
-    let inspectorData = null;
-    if (kind === "pawn") {
-      state.selectedEntity = entity;
-      inspectorData = {
-        type: 'pawn',
-        name: entity.name,
-        hp: entity.hp,
-        hunger: entity.hunger.toFixed(0),
-        position: `(${entity.pos.x},${entity.pos.z})`
-      };
-    } else if (kind === "berry") {
-      inspectorData = {
-        type: 'berry',
-        growth: (entity.growth * 100).toFixed(0),
-        berryCount: entity.berryCount
-      };
-    } else if (kind === "ore") {
-      inspectorData = {
-        type: 'ore',
-        amount: entity.amount
-      };
-    } else if (kind === "house") {
-      inspectorData = {
-        type: 'house',
-        hp: entity.hp,
-        position: `(${entity.x},${entity.z})`
-      };
-    } else if (kind === "building") {
-      const label = BUILDING_TYPES[entity.type]?.label || entity.type;
-      const stateLabel = entity.isComplete ? '完成' : `建造中 ${entity.progress.toFixed(0)}%`;
-      inspectorData = {
-        type: 'building',
-        label: label,
-        state: stateLabel,
-        hp: entity.hp,
-        position: `(${entity.x},${entity.z})`
-      };
-    } else if (x !== undefined && z !== undefined && state.map[z] && state.map[z][x]) {
-      inspectorData = {
-        type: 'tile',
-        terrain: state.map[z][x].type,
-        position: `(${x},${z})`
-      };
-    }
-
-    state.uiManager.showInspector(inspectorData);
-    return;
-  }
-
-  // Fallback to legacy DOM manipulation
   if (!hit) {
-    if (ui.inspector) ui.inspector.innerHTML = "未选中对象";
+    state.uiManager.showInspector(null);
     return;
   }
+
   const userData = hit.object.userData || {};
   const { kind, entity, x, z } = userData;
+
   if (kind === "pawn") {
     state.selectedEntity = entity;
-    if (ui.inspector) ui.inspector.innerHTML = `殖民者：<b>${entity.name}</b><br/>HP: ${entity.hp}<br/>饥饿: ${entity.hunger.toFixed(0)}<br/>位置: (${entity.pos.x},${entity.pos.z})`;
-  } else if (kind === "berry") {
-    if (ui.inspector) ui.inspector.innerHTML = `浆果灌木<br/>成熟度: ${(entity.growth * 100).toFixed(0)}%<br/>可收获: ${entity.berryCount}`;
-  } else if (kind === "ore") {
-    if (ui.inspector) ui.inspector.innerHTML = `矿脉节点<br/>储量: ${entity.amount}`;
-  } else if (kind === "house") {
-    if (ui.inspector) ui.inspector.innerHTML = `房屋<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
-  } else if (kind === "building") {
+    state.uiManager.setSelectedPawn(entity);
+    return;
+  }
+
+  if (kind === "berry") {
+    state.uiManager.showInspector({
+      type: 'berry',
+      growth: (entity.growth * 100).toFixed(0),
+      berryCount: entity.berryCount
+    });
+    return;
+  }
+
+  if (kind === "ore") {
+    state.uiManager.showInspector({ type: 'ore', amount: entity.amount });
+    return;
+  }
+
+  if (kind === "house") {
+    state.uiManager.showInspector({
+      type: 'house',
+      label: '房屋',
+      state: '完成',
+      hp: entity.hp,
+      position: `(${entity.x},${entity.z})`
+    });
+    return;
+  }
+
+  if (kind === "building") {
     const label = BUILDING_TYPES[entity.type]?.label || entity.type;
     const stateLabel = entity.isComplete ? '完成' : `建造中 ${entity.progress.toFixed(0)}%`;
-    if (ui.inspector) ui.inspector.innerHTML = `${label}<br/>状态: ${stateLabel}<br/>耐久: ${entity.hp}<br/>坐标: (${entity.x},${entity.z})`;
-  } else {
-    if (x !== undefined && z !== undefined && state.map[z] && state.map[z][x]) {
-      if (ui.inspector) ui.inspector.innerHTML = `地块: ${state.map[z][x].type}<br/>坐标: (${x},${z})`;
-    } else {
-      if (ui.inspector) ui.inspector.innerHTML = "未知对象";
-    }
+    state.uiManager.showInspector({
+      type: 'building',
+      label,
+      state: stateLabel,
+      hp: entity.hp,
+      position: `(${entity.x},${entity.z})`
+    });
+    return;
   }
+
+  if (x !== undefined && z !== undefined && state.map[z] && state.map[z][x]) {
+    const cell = state.map[z][x];
+    const terrain = cell.type;
+    const marks = [];
+
+    if (cell.stains?.length) {
+      marks.push(...cell.stains.map(s => `污渍: ${s}`));
+    }
+    if (cell.footprints?.length) {
+      marks.push(...cell.footprints.map(f => `脚印: ${f}`));
+    }
+
+    state.uiManager.showInspector({
+      type: 'tile',
+      terrain,
+      hasMountain: !!cell.mountain,
+      position: `(${x},${z})`,
+      surfaceMarks: marks,
+    });
+    return;
+  }
+
+  state.uiManager.showInspector({ type: 'unknown' });
 }
 
 function setMode(mode) {
