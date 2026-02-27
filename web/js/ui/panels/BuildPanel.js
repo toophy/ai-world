@@ -146,7 +146,7 @@ export class BuildPanel extends BaseComponent {
 
     // 触发回调
     if (this.props.onModeChange) {
-      this.props.onModeChange({ type: 'build', building: buildingType });
+      this.props.onModeChange('build', buildingType);
     }
   }
 
@@ -164,7 +164,7 @@ export class BuildPanel extends BaseComponent {
 
     // 触发回调
     if (this.props.onModeChange) {
-      this.props.onModeChange({ type: 'action', mode });
+      this.props.onModeChange(mode, null);
     }
   }
 

@@ -184,9 +184,22 @@ export class UIManager {
    * 处理模式切换
    */
   handleModeChange(mode, building = null) {
-    if (this.state.inputManager) {
-      this.state.inputManager.setMode(mode, building);
+    if (!this.state.inputManager) return;
+
+    // 兼容旧签名：onModeChange({ type: 'build', building }) / onModeChange({ type: 'action', mode })
+    if (mode && typeof mode === 'object') {
+      if (mode.type === 'build') {
+        this.state.inputManager.setMode('build', mode.building || null);
+        return;
+      }
+
+      if (mode.type === 'action') {
+        this.state.inputManager.setMode(mode.mode || 'inspect', null);
+        return;
+      }
     }
+
+    this.state.inputManager.setMode(mode, building);
   }
 
   /**
