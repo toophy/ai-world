@@ -101,13 +101,72 @@ body,
   align-items: center;
 }
 
-/* Left column */
+/* Top-center colonist strip */
 [data-component="pawn-list"] {
-  top: 78px !important;
-  left: 10px !important;
-  width: 300px !important;
-  bottom: 330px !important;
-  z-index: 20;
+  position: absolute;
+  top: 76px !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+  z-index: 28;
+  pointer-events: auto;
+}
+
+.pawn-strip-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  max-width: min(760px, 70vw);
+  overflow-x: auto;
+}
+
+.pawn-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 56px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(132, 158, 210, .35);
+  border-radius: 8px;
+  padding: 4px 6px;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.pawn-chip.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(121,176,255,.35) inset;
+}
+
+.pawn-chip .avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.25);
+  margin-bottom: 2px;
+}
+
+.pawn-chip .name {
+  font-size: 10px;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.pawn-chip .hpbar {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.15);
+  overflow: hidden;
+}
+
+.pawn-chip .hpbar .fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #e86a7c, #78d17a);
 }
 
 [data-component="task-list"] {
@@ -197,7 +256,6 @@ body,
 }
 
 @media (max-width: 1280px) {
-  [data-component="pawn-list"],
   [data-component="task-list"] {
     width: 260px !important;
   }

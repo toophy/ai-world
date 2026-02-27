@@ -1,39 +1,30 @@
 import { BaseComponent } from '../components/BaseComponent.js';
 import { Button } from '../components/Button.js';
-import { renderIcon } from '../components/Icon.js';
+import { BUILDING_TYPES } from '../../config.js';
 
 /**
  * BuildPanel - 建造面板组件
- * 显示建筑和操作按钮（建造、采矿、收获、种植、拆除）
- * 以及优先级设置
  */
 export class BuildPanel extends BaseComponent {
   constructor(props = {}) {
     super(props);
-    // 默认优先级为5
     this.state.priority = props.priority ?? 5;
-    // 当前选中的建筑类型
     this.state.selectedBuilding = null;
-    // 当前选中的操作模式
     this.state.selectedMode = null;
-    // 按钮实例
     this.buildingButtons = {};
     this.actionButtons = {};
     this.priorityButtons = {};
   }
 
   componentDidMount() {
-    // 挂载建筑按钮
     this.mountBuildingButtons();
-    // 挂载操作按钮
     this.mountActionButtons();
-    // 挂载优先级按钮
     this.mountPriorityButtons();
+    this.updateBuildingInfoPanel();
   }
 
   mountBuildingButtons() {
     if (!this.element) return;
-
     const container = this.element.querySelector('[data-section="building-buttons"]');
     if (!container) return;
 
@@ -69,14 +60,12 @@ export class BuildPanel extends BaseComponent {
 
   mountActionButtons() {
     if (!this.element) return;
-
     const container = this.element.querySelector('[data-section="action-buttons"]');
     if (!container) return;
 
     const actions = [
       { mode: 'mine', label: '开采', icon: 'mine' },
       { mode: 'harvest', label: '收获', icon: 'harvest' },
-      { mode: 'plant', label: '种植', icon: 'plant' },
       { mode: 'demolish', label: '拆除', icon: 'demolish' },
     ];
 
@@ -103,7 +92,6 @@ export class BuildPanel extends BaseComponent {
 
   mountPriorityButtons() {
     if (!this.element) return;
-
     const container = this.element.querySelector('[data-section="priority-buttons"]');
     if (!container) return;
 
@@ -132,78 +120,51 @@ export class BuildPanel extends BaseComponent {
     });
   }
 
-  /**
-   * 选择建筑类型
-   */
   selectBuilding(buildingType) {
-    // 清除操作模式选择
     this.state.selectedMode = null;
     this.state.selectedBuilding = buildingType;
-
-    // 更新按钮状态
     this.updateBuildingButtons();
     this.updateActionButtons();
+    this.updateBuildingInfoPanel();
 
-    // 触发回调
     if (this.props.onModeChange) {
-      this.props.onModeChange({ type: 'build', building: buildingType });
+      this.props.onModeChange('build', buildingType);
     }
   }
 
-  /**
-   * 选择操作模式
-   */
   selectMode(mode) {
-    // 清除建筑选择
     this.state.selectedBuilding = null;
     this.state.selectedMode = mode;
-
-    // 更新按钮状态
     this.updateBuildingButtons();
     this.updateActionButtons();
+    this.updateBuildingInfoPanel();
 
-    // 触发回调
     if (this.props.onModeChange) {
-      this.props.onModeChange({ type: 'action', mode });
+      this.props.onModeChange(mode, null);
     }
   }
 
-  /**
-   * 设置优先级
-   */
   setPriority(priority) {
     this.state.priority = priority;
-
-    // 更新按钮状态
     this.updatePriorityButtons();
 
-    // 触发回调
     if (this.props.onPriorityChange) {
       this.props.onPriorityChange(priority);
     }
   }
 
-  /**
-   * 更新建筑按钮状态
-   */
   updateBuildingButtons() {
     Object.entries(this.buildingButtons).forEach(([type, button]) => {
       button.update({ active: this.state.selectedBuilding === type });
     });
   }
 
-  /**
-   * 更新操作按钮状态
-   */
   updateActionButtons() {
     Object.entries(this.actionButtons).forEach(([mode, button]) => {
       button.update({ active: this.state.selectedMode === mode });
     });
   }
 
-  /**
-   * 更新优先级按钮状态
-   */
   updatePriorityButtons() {
     Object.entries(this.priorityButtons).forEach(([value, button]) => {
       const isActive = parseInt(value) === this.state.priority;
@@ -214,33 +175,34 @@ export class BuildPanel extends BaseComponent {
     });
   }
 
-  /**
-   * 获取建筑图标
-   */
-  getBuildingIcon(buildingType) {
-    return renderIcon(buildingType, 'w-5 h-5');
-  }
+  updateBuildingInfoPanel() {
+    const container = this.element?.querySelector('[data-section="building-info"]');
+    if (!container) return;
 
-  /**
-   * 获取模式标签
-   */
-  getModeLabel(mode) {
-    const labels = {
-      mine: '开采',
-      harvest: '收获',
-      plant: '种植',
-      demolish: '拆除',
-    };
-    return labels[mode] || mode;
-  }
+    const type = this.state.selectedBuilding;
+    if (!type || !BUILDING_TYPES[type]) {
+      container.innerHTML = '';
+      container.classList.add('hidden');
+      return;
+    }
 
-  /**
-   * 获取优先级标签
-   */
-  getPriorityLabel(priority) {
-    if (priority <= 3) return '低';
-    if (priority >= 7) return '高';
-    return '中';
+    const cfg = BUILDING_TYPES[type];
+    const resText = Object.entries(cfg.resources || {})
+      .map(([k, v]) => `${k}:${v}`)
+      .join(' / ') || '无';
+    const rules = cfg.placementRules || {};
+    const terrain = (rules.allowedTerrain || []).join(', ') || '任意';
+
+    container.classList.remove('hidden');
+    container.innerHTML = `
+      <div class="text-xs text-game-text-dim border border-game-border rounded-md p-2 bg-black/20">
+        <div class="text-sm text-game-text font-semibold mb-1">${cfg.label}</div>
+        <div>尺寸: ${cfg.width} x ${cfg.height}</div>
+        <div>资源: ${resText}</div>
+        <div>可放置地形: ${terrain}</div>
+        <div>需求邻居数: ${rules.minNeighbors ?? 0}</div>
+      </div>
+    `;
   }
 
   render() {
@@ -252,56 +214,32 @@ export class BuildPanel extends BaseComponent {
           <h3 class="build-panel-title">建造</h3>
         </div>
 
-        <!-- 建筑按钮 -->
         <div class="build-panel-section">
           <div class="build-panel-section-label">建筑</div>
-          <div class="build-panel-buttons" data-section="building-buttons">
-            <!-- 建筑按钮将在这里挂载 -->
-          </div>
+          <div class="build-panel-buttons" data-section="building-buttons"></div>
+          <div class="mt-2 hidden" data-section="building-info"></div>
         </div>
 
-        <!-- 操作按钮 -->
         <div class="build-panel-section">
           <div class="build-panel-section-label">操作</div>
-          <div class="build-panel-buttons" data-section="action-buttons">
-            <!-- 操作按钮将在这里挂载 -->
-          </div>
+          <div class="build-panel-buttons" data-section="action-buttons"></div>
         </div>
 
-        <!-- 优先级 -->
         <div class="build-panel-section">
           <div class="build-panel-section-label">优先级</div>
-          <div class="build-panel-priority" data-section="priority-buttons">
-            <!-- 优先级按钮将在这里挂载 -->
-          </div>
+          <div class="build-panel-priority" data-section="priority-buttons"></div>
         </div>
       </div>
     `;
   }
 
   unmount() {
-    // 清理所有按钮
-    Object.values(this.buildingButtons).forEach(button => {
-      if (button && typeof button.unmount === 'function') {
-        button.unmount();
-      }
-    });
+    Object.values(this.buildingButtons).forEach(button => button.unmount?.());
     this.buildingButtons = {};
-
-    Object.values(this.actionButtons).forEach(button => {
-      if (button && typeof button.unmount === 'function') {
-        button.unmount();
-      }
-    });
+    Object.values(this.actionButtons).forEach(button => button.unmount?.());
     this.actionButtons = {};
-
-    Object.values(this.priorityButtons).forEach(button => {
-      if (button && typeof button.unmount === 'function') {
-        button.unmount();
-      }
-    });
+    Object.values(this.priorityButtons).forEach(button => button.unmount?.());
     this.priorityButtons = {};
-
     super.unmount();
   }
 }
