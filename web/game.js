@@ -89,20 +89,34 @@ const CARRY_LIMITS = {
   berry: 3,
 };
 
+const DEFAULT_STOCKPILE_TILE = { x: 2, z: 2 };
+
 function getStorageDropoffTile() {
   const storage = state.buildings.find(b => b.type === 'storage' && b.isComplete);
   if (storage) return { x: storage.x, z: storage.z };
-  return null;
+  return DEFAULT_STOCKPILE_TILE;
 }
 
 function addDroppedItem(x, z, itemType, amount) {
   if (amount <= 0) return;
+
   const existing = state.droppedItems.find(i => i.x === x && i.z === z && i.itemType === itemType);
   if (existing) {
     existing.amount += amount;
-  } else {
-    state.droppedItems.push({ id: crypto.randomUUID(), x, z, itemType, amount });
+    return;
   }
+
+  const worldPos = gridToWorld(x, z);
+  const color = itemType === 'ore' ? 0x7ec4ff : 0xff7aa2;
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.35, 0.35, 0.35),
+    new THREE.MeshStandardMaterial({ color, emissive: 0x111111 })
+  );
+  mesh.position.set(worldPos.x, 0.2, worldPos.z);
+  mesh.userData = { kind: 'dropped_item', itemType };
+  world.add(mesh);
+
+  state.droppedItems.push({ id: crypto.randomUUID(), x, z, itemType, amount, mesh });
 }
 
 
@@ -506,6 +520,19 @@ function updatePawn(pawn, dt) {
       return;
     }
 
+    // Haul dropped resources to stockpile/storage first
+    if (state.taskSystem && typeof state.taskSystem.hasTaskAt === 'function') {
+      const dropped = state.droppedItems.find(item => item.amount > 0 && !state.taskSystem.hasTaskAt(item.x, item.z));
+      if (dropped) {
+        const task = new Task('haul', dropped.x, dropped.z, {
+          priority: 10,
+          haulDropId: dropped.id,
+        });
+        state.taskSystem.addTask(task);
+        return;
+      }
+    }
+
     // Auto-dispatch: find mature berry bushes (if TaskSystem is available)
     if (state.taskSystem && typeof state.taskSystem.hasTaskAt === 'function') {
       const mature = state.berryBushes.find((b) => b.berryCount > 0);
@@ -703,7 +730,22 @@ function completeTask(pawn, task) {
       }
       break;
 
-    case 'haul':
+    case 'haul': {
+      if (task.haulDropId && !pawn.carrying) {
+        const dropped = state.droppedItems.find(i => i.id === task.haulDropId);
+        if (dropped) {
+          const carryLimit = CARRY_LIMITS[dropped.itemType] || 1;
+          const amount = Math.min(carryLimit, dropped.amount);
+          pawn.carrying = { itemType: dropped.itemType, amount };
+          dropped.amount -= amount;
+
+          if (dropped.amount <= 0) {
+            if (dropped.mesh) world.remove(dropped.mesh);
+            state.droppedItems = state.droppedItems.filter(i => i.id !== dropped.id);
+          }
+        }
+      }
+
       if (pawn.carrying) {
         const amount = pawn.carrying.amount;
         const itemType = pawn.carrying.itemType;
@@ -712,6 +754,7 @@ function completeTask(pawn, task) {
         logEvent(`${pawn.name} 已将${itemType} x${amount}送入仓库区域`);
       }
       break;
+    }
 
     case 'move_order':
       logEvent(`${pawn.name} 到达目的地`);
